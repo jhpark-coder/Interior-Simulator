@@ -1,0 +1,124 @@
+﻿.palette-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.panel-title {
+  margin: 6px 0 4px;
+  font-size: 1.2rem;
+}
+
+.panel-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.palette-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.palette-card {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: #fdf9f2;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.palette-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(27, 26, 23, 0.12);
+}
+
+.palette-name {
+  font-weight: 600;
+}
+
+.palette-size {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.palette-preset-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.palette-preset-group {
+  position: relative;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.palette-preset-group.is-open {
+  z-index: 20;
+}
+
+.palette-preset-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+
+.palette-preset-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.palette-preset-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 14px 26px rgba(27, 26, 23, 0.18);
+  padding: 10px;
+}
+
+.palette-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.palette-preset-chip {
+  border: 1px solid var(--panel-border);
+  background: #f6f4ef;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.palette-preset-chip:hover {
+  background: #ece8de;
+  transform: translateY(-1px);
+}
