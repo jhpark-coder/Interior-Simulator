@@ -115,15 +115,14 @@ function DoorItem({ door, room, isSelected, onSelect, onUpdate }: DoorItemProps)
         strokeWidth={door.thickness / 10}
       />
 
-      {/* Door arc (swing path) */}
-      <Arc
-        x={arcData.centerX - pos.x}
-        y={arcData.centerY - pos.y}
-        innerRadius={0}
-        outerRadius={arcData.radius}
-        angle={Math.abs(arcData.endAngle - arcData.startAngle)}
-        rotation={Math.min(arcData.startAngle, arcData.endAngle)}
-        fill="rgba(100, 149, 237, 0.1)"
+      {/* Door swing line */}
+      <Line
+        points={[
+          arcData.centerX - pos.x,
+          arcData.centerY - pos.y,
+          arcData.centerX - pos.x + arcData.radius * Math.cos((arcData.endAngle * Math.PI) / 180),
+          arcData.centerY - pos.y + arcData.radius * Math.sin((arcData.endAngle * Math.PI) / 180),
+        ]}
         stroke={isSelected ? "#4A90E2" : "#6495ED"}
         strokeWidth={1}
         dash={[5, 5]}

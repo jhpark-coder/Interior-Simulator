@@ -1,8 +1,8 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Layer, Rect, Text, Group, Circle, Line } from "react-konva";
 import type Konva from "konva";
 import type { FurnitureItem, FurnitureType, Room, SelectedEntity } from "../types";
-import { snapPosition, constrainToRoom } from "../utils";
+import { snapPosition, constrainToRoom, checkCollisionWithOthers } from "../utils";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 
 type FurnitureLayerProps = {
@@ -13,29 +13,74 @@ type FurnitureLayerProps = {
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
 };
 
+type FurnitureItemProps = {
+  item: FurnitureItem;
+  room: Room;
+  allFurniture: FurnitureItem[];
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
+};
+
 // Furniture colors by type
 const getFurnitureColor = (type: FurnitureType): string => {
   const colors: Record<FurnitureType, string> = {
-    bed: "#8B4513",      // Brown
-    desk: "#4169E1",     // Royal Blue
-    chair: "#FF8C00",    // Dark Orange
-    closet: "#8B008B",   // Dark Magenta
-    sofa: "#DC143C",     // Crimson
-    table: "#228B22",    // Forest Green
+    // Furniture
+    bed: "#8B4513",           // Brown
+    desk: "#4169E1",          // Royal Blue
+    chair: "#FF8C00",         // Dark Orange
+    closet: "#8B008B",        // Dark Magenta
+    sofa: "#DC143C",          // Crimson
+    table: "#228B22",         // Forest Green
+    // Appliances
+    refrigerator: "#C0C0C0",  // Silver
+    "washing-machine": "#7B68EE", // Medium Slate Blue
+    dryer: "#9370DB",         // Medium Purple
+    dishwasher: "#4682B4",    // Steel Blue
+    oven: "#696969",          // Dim Gray
+    microwave: "#778899",     // Light Slate Gray
+    // Electronics
+    tv: "#2F4F4F",            // Dark Slate Gray
+    "air-conditioner": "#87CEEB", // Sky Blue
+    "air-purifier": "#98FB98", // Pale Green
+    humidifier: "#ADD8E6",    // Light Blue
+    // Fixtures
+    sink: "#F5F5DC",          // Beige
+    toilet: "#FFFACD",        // Lemon Chiffon
+    bathtub: "#E0FFFF",       // Light Cyan
+    shower: "#F0F8FF",        // Alice Blue
   };
-  return colors[type];
+  return colors[type] || "#888888";
 };
 
 const getFurnitureStroke = (type: FurnitureType): string => {
   const strokes: Record<FurnitureType, string> = {
+    // Furniture
     bed: "#654321",
     desk: "#2E5C8A",
     chair: "#CC6600",
     closet: "#660066",
     sofa: "#AA0000",
     table: "#1B6B1B",
+    // Appliances
+    refrigerator: "#A9A9A9",
+    "washing-machine": "#6A5ACD",
+    dryer: "#8A2BE2",
+    dishwasher: "#4169E1",
+    oven: "#555555",
+    microwave: "#696969",
+    // Electronics
+    tv: "#000000",
+    "air-conditioner": "#4682B4",
+    "air-purifier": "#32CD32",
+    humidifier: "#4682B4",
+    // Fixtures
+    sink: "#D2B48C",
+    toilet: "#F0E68C",
+    bathtub: "#B0E0E6",
+    shower: "#87CEEB",
   };
-  return strokes[type];
+  return strokes[type] || "#666666";
 };
 
 // Render type-specific markers
@@ -157,6 +202,7 @@ export function FurnitureLayer({
           key={item.id}
           item={item}
           room={room}
+          allFurniture={furniture}
           isSelected={
             selectedEntity?.kind === "furniture" && selectedEntity.id === item.id
           }
@@ -168,22 +214,16 @@ export function FurnitureLayer({
   );
 }
 
-type FurnitureItemProps = {
-  item: FurnitureItem;
-  room: Room;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-  onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
-};
-
 function FurnitureItem({
   item,
   room,
+  allFurniture,
   isSelected,
   onSelect,
   onUpdate,
 }: FurnitureItemProps) {
   const groupRef = useRef<Konva.Group>(null);
+  const [lastValidPos, setLastValidPos] = useState({ x: item.x, y: item.y });
 
   useEffect(() => {
     if (groupRef.current) {
@@ -193,6 +233,7 @@ function FurnitureItem({
 
   const handleDragStart = () => {
     onSelect(item.id);
+    setLastValidPos({ x: item.x, y: item.y });
   };
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -209,7 +250,20 @@ function FurnitureItem({
     x = constrained.x;
     y = constrained.y;
 
+    // Check collision with other furniture
+    const testItem = { ...item, x, y };
+    if (checkCollisionWithOthers(testItem, allFurniture)) {
+      // Collision detected, revert to last valid position
+      node.position(lastValidPos);
+      return;
+    }
+
+    // No collision, update position
     node.position({ x, y });
+    setLastValidPos({ x, y });
+
+    // Update store immediately for real-time dimension updates
+    onUpdate(item.id, { x, y });
   };
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -227,6 +281,13 @@ function FurnitureItem({
     const delta = e.evt.deltaY > 0 ? -1 : 1;
     const rotationStep = e.evt.shiftKey ? 1 : 15;
     const newRotation = (item.rotation + delta * rotationStep) % 360;
+
+    // Check collision with new rotation
+    const testItem = { ...item, rotation: newRotation };
+    if (checkCollisionWithOthers(testItem, allFurniture)) {
+      // Collision detected, don't rotate
+      return;
+    }
 
     onUpdate(item.id, { rotation: newRotation });
     // Commit history after rotation
@@ -253,9 +314,9 @@ function FurnitureItem({
       <Rect
         width={item.width}
         height={item.depth}
-        fill={isSelected ? "#4A90E2" : getFurnitureColor(item.type)}
-        stroke={isSelected ? "#2E5C8A" : getFurnitureStroke(item.type)}
-        strokeWidth={isSelected ? 3 : 2}
+        fill={getFurnitureColor(item.type)}
+        stroke={isSelected ? "#4A90E2" : getFurnitureStroke(item.type)}
+        strokeWidth={isSelected ? 4 : 2}
         cornerRadius={4}
       />
       {/* Type-specific visual markers */}

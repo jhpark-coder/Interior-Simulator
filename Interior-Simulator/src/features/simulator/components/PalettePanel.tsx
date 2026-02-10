@@ -1,10 +1,9 @@
 import "./PalettePanel.css";
-import { useState } from "react";
-import { FURNITURE_CATALOG, FURNITURE_PRESETS } from "../constants";
-import type { FurnitureType, WallSide } from "../types";
+import { useState, useMemo } from "react";
+import { searchItems, CATEGORY_LABELS } from "../constants";
+import type { ItemDefinition, WallSide } from "../types";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 
-const furnitureTypes = Object.keys(FURNITURE_CATALOG) as FurnitureType[];
 const wallSides: WallSide[] = ["north", "east", "south", "west"];
 
 const wallLabels: Record<WallSide, string> = {
@@ -14,78 +13,198 @@ const wallLabels: Record<WallSide, string> = {
   west: "서",
 };
 
-const presetGroups = furnitureTypes
-  .map((type) => ({
-    type,
-    title: FURNITURE_CATALOG[type].label,
-    presets: FURNITURE_PRESETS.filter((preset) => preset.type === type),
-  }))
-  .filter((group) => group.presets.length > 0);
-
 export function PalettePanel() {
   const [selectedWall, setSelectedWall] = useState<WallSide>("north");
-  const [expandedType, setExpandedType] = useState<FurnitureType | null>("bed");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
   const setPendingFurniture = useSimulatorStore((state) => state.setPendingFurniture);
   const setPendingDoor = useSimulatorStore((state) => state.setPendingDoor);
   const setPendingWindow = useSimulatorStore((state) => state.setPendingWindow);
 
-  const togglePresetGroup = (type: FurnitureType) => {
-    setExpandedType((prev) => (prev === type ? null : type));
+  // Search results
+  const searchResults = useMemo(() => {
+    return searchItems(searchQuery);
+  }, [searchQuery]);
+
+  // Group by category
+  const groupedResults = useMemo(() => {
+    const grouped: Record<string, ItemDefinition[]> = {};
+    searchResults.forEach((item) => {
+      if (!grouped[item.category]) {
+        grouped[item.category] = [];
+      }
+      grouped[item.category].push(item);
+    });
+    return grouped;
+  }, [searchResults]);
+
+  // Favorite items
+  const favoriteItems = useMemo(() => {
+    return searchItems("").filter((item) => favorites.includes(item.id));
+  }, [favorites]);
+
+  const handleSelectItem = (item: ItemDefinition) => {
+    setPendingFurniture(item.type, {
+      name: item.name,
+      width: item.width,
+      depth: item.depth,
+      height: item.height,
+    });
+  };
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) =>
+      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+    );
   };
 
   return (
     <div className="palette-panel">
+      {/* Header */}
       <div>
         <p className="panel-kicker">팔레트</p>
-        <h2 className="panel-title">가구</h2>
-        <p className="panel-subtitle">프리셋을 선택해 대기 값을 채우세요</p>
+        <h2 className="panel-title">아이템 검색</h2>
+        <p className="panel-subtitle">검색하여 배치할 아이템을 찾으세요</p>
       </div>
 
-      <div>
-        <p className="panel-kicker">프리셋</p>
-        <h2 className="panel-title">가구 평균 사이즈</h2>
-        <p className="panel-subtitle">자동 배치 없이 이름/치수만 채워집니다</p>
+      {/* Search Box */}
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          type="text"
+          placeholder="소파, 냉장고, TV 등..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "0.75rem",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            fontSize: "14px",
+          }}
+        />
       </div>
 
-      <div className="palette-preset-groups">
-        {presetGroups.map((group) => (
-          <div
-            key={group.type}
-            className={`palette-preset-group ${expandedType === group.type ? "is-open" : ""}`}
-          >
-            <button
-              className="palette-preset-toggle"
-              onClick={() => togglePresetGroup(group.type)}
-            >
-              <span className="palette-preset-title">{group.title}</span>
-              <span>{expandedType === group.type ? "▲" : "▼"}</span>
-            </button>
-            {expandedType === group.type && (
-              <div className="palette-preset-dropdown">
-                <div className="palette-preset-row">
-                {group.presets.map((preset) => (
+      {/* Favorites Section */}
+      {favoriteItems.length > 0 && (
+        <>
+          <div style={{ marginBottom: "0.5rem" }}>
+            <p className="panel-kicker">즐겨찾기</p>
+          </div>
+          <div style={{ marginBottom: "1.5rem", maxHeight: "200px", overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {favoriteItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0.5rem",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    background: "#f9f9f9",
+                  }}
+                >
                   <button
-                    key={preset.id}
-                    className="palette-preset-chip"
-                    onClick={() =>
-                      setPendingFurniture(preset.type, {
-                        name: preset.name,
-                        width: preset.width,
-                        depth: preset.depth,
-                        height: preset.height,
-                      })
-                    }
+                    onClick={() => handleSelectItem(item)}
+                    style={{
+                      flex: 1,
+                      textAlign: "left",
+                      padding: "0.25rem 0.5rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                    }}
                   >
-                    {preset.label} · {preset.width}x{preset.depth}
+                    <div style={{ fontWeight: 500 }}>{item.label}</div>
+                    <div style={{ fontSize: "11px", color: "#666" }}>
+                      {item.width}×{item.depth}×{item.height}mm
+                    </div>
                   </button>
-                ))}
+                  <button
+                    onClick={() => toggleFavorite(item.id)}
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ⭐
+                  </button>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Search Results */}
+      {searchQuery && (
+        <div style={{ marginBottom: "0.5rem" }}>
+          <p className="panel-kicker">
+            검색 결과 ({searchResults.length}개)
+          </p>
+        </div>
+      )}
+
+      <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+        {Object.entries(groupedResults).map(([category, items]) => (
+          <div key={category} style={{ marginBottom: "1.5rem" }}>
+            <h3 style={{ fontSize: "13px", fontWeight: 600, marginBottom: "0.5rem", color: "#666" }}>
+              {CATEGORY_LABELS[category] || category}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0.5rem",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    background: "white",
+                  }}
+                >
+                  <button
+                    onClick={() => handleSelectItem(item)}
+                    style={{
+                      flex: 1,
+                      textAlign: "left",
+                      padding: "0.25rem 0.5rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{item.label}</div>
+                    <div style={{ fontSize: "11px", color: "#666" }}>
+                      {item.width}×{item.depth}×{item.height}mm
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(item.id)}
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    {favorites.includes(item.id) ? "⭐" : "☆"}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
+      {/* Openings Section */}
       <div style={{ marginTop: "2rem" }}>
         <p className="panel-kicker">개구부</p>
         <h2 className="panel-title">문 & 창문</h2>

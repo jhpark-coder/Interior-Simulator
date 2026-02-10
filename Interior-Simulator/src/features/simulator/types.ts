@@ -20,11 +20,22 @@ export type Room = {
   displayUnit: Unit;
 };
 
-export type FurnitureType = "bed" | "desk" | "chair" | "closet" | "sofa" | "table";
+export type ItemCategory = "furniture" | "appliance" | "electronics" | "fixture";
+
+export type FurnitureType =
+  // Furniture
+  | "bed" | "desk" | "chair" | "closet" | "sofa" | "table"
+  // Appliances
+  | "refrigerator" | "washing-machine" | "dryer" | "dishwasher" | "oven" | "microwave"
+  // Electronics
+  | "tv" | "air-conditioner" | "air-purifier" | "humidifier"
+  // Fixtures
+  | "sink" | "toilet" | "bathtub" | "shower";
 
 export type FurnitureItem = {
   id: string;
   type: FurnitureType;
+  category: ItemCategory;
   name: string;
   x: number;
   y: number;
@@ -34,6 +45,19 @@ export type FurnitureItem = {
   rotation: number;
   zIndex: number;
   locked: boolean;
+};
+
+export type ItemDefinition = {
+  id: string;
+  type: FurnitureType;
+  category: ItemCategory;
+  label: string;
+  name: string;
+  width: number;
+  depth: number;
+  height: number;
+  tags: string[];
+  keywords: string[];
 };
 
 export type Door = {

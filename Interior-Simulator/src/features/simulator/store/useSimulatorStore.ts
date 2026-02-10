@@ -31,9 +31,20 @@ const createFurnitureItem = (
   const baseX = room.width / 2 - template.width / 2;
   const baseY = room.height / 2 - template.depth / 2;
 
+  // Determine category based on type
+  let category: "furniture" | "appliance" | "electronics" | "fixture" = "furniture";
+  if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
+    category = "appliance";
+  } else if (["tv", "air-conditioner", "air-purifier", "humidifier"].includes(type)) {
+    category = "electronics";
+  } else if (["sink", "toilet", "bathtub", "shower"].includes(type)) {
+    category = "fixture";
+  }
+
   return {
     id: createId(),
     type,
+    category,
     name: template.label,
     x: baseX,
     y: baseY,
@@ -189,6 +200,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       },
       pendingDoor: null,
       pendingWindow: null,
+      selectedEntity: null,
     });
   },
   updatePendingFurniture: (patch) =>
@@ -231,6 +243,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       },
       pendingFurniture: null,
       pendingWindow: null,
+      selectedEntity: null,
     });
   },
   updatePendingDoor: (patch) =>
@@ -287,6 +300,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       },
       pendingFurniture: null,
       pendingDoor: null,
+      selectedEntity: null,
     });
   },
   updatePendingWindow: (patch) =>

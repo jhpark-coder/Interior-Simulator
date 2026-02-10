@@ -52,7 +52,7 @@
 .sim-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
   gap: 18px;
   padding: 18px;
 }

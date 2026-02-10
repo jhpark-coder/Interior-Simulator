@@ -89,13 +89,8 @@ export function DimensionLayer({
 
     return (
       <Group key={key}>
-        <Shape
-          sceneFunc={(ctx, shape) => {
-            ctx.beginPath();
-            ctx.moveTo(x1, y);
-            ctx.quadraticCurveTo(midX, parabolaPeakY, x2, y);
-            ctx.fillStrokeShape(shape);
-          }}
+        <Line
+          points={[x1, y, x2, y]}
           stroke={lineColor}
           strokeWidth={lineWidth}
           lineCap="round"
@@ -178,13 +173,8 @@ export function DimensionLayer({
 
     return (
       <Group key={key}>
-        <Shape
-          sceneFunc={(ctx, shape) => {
-            ctx.beginPath();
-            ctx.moveTo(x, y1);
-            ctx.quadraticCurveTo(parabolaPeakX, midY, x, y2);
-            ctx.fillStrokeShape(shape);
-          }}
+        <Line
+          points={[x, y1, x, y2]}
           stroke={lineColor}
           strokeWidth={lineWidth}
           lineCap="round"
@@ -300,11 +290,11 @@ export function DimensionLayer({
     )
   );
 
-  // 선택된 가구의 치수 표시
-  if (selectedEntity?.kind === "furniture") {
-    const item = furniture.find((f) => f.id === selectedEntity.id);
-    if (item && item.rotation === 0) {
+  // 모든 가구의 치수 표시 (회전되지 않은 가구만)
+  furniture.forEach((item) => {
+    if (item.rotation === 0) {
       const furnitureDimensionInset = toWorld(20);
+      const isSelected = selectedEntity?.kind === "furniture" && selectedEntity.id === item.id;
 
       // 가구 내부 가로 치수
       dimensions.push(
@@ -330,7 +320,7 @@ export function DimensionLayer({
         )
       );
     }
-  }
+  });
 
   // 문 치수 표시
   doors.forEach((door, idx) => {

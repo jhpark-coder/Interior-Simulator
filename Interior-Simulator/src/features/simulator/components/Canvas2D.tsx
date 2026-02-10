@@ -140,7 +140,14 @@ export function Canvas2D() {
   };
 
   const handleRoomClick = () => {
-    clearSelection();
+    selectEntity({ kind: "room" });
+  };
+
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // 빈 공간(Stage 자체)을 클릭했을 때만 선택 해제
+    if (e.target === e.target.getStage()) {
+      clearSelection();
+    }
   };
 
   const handleFurnitureSelect = (id: string) => {
@@ -190,6 +197,7 @@ export function Canvas2D() {
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
+          onClick={handleStageClick}
         >
           <RoomLayer room={room} onClick={handleRoomClick} />
           <GridLayer room={room} visible={true} />
