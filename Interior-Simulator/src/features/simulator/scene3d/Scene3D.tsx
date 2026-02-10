@@ -13,8 +13,8 @@ export function Scene3D() {
   const windows = useSimulatorStore((state) => state.windows);
 
   return (
-    <div style={{ width: "100%", height: "100%", background: "#1a1a1a" }}>
-      <Canvas shadows>
+    <div style={{ width: "100%", height: "100%", background: "#2a2a2a" }}>
+      <Canvas shadows gl={{ preserveDrawingBuffer: true }}>
         {/* Camera */}
         <PerspectiveCamera
           makeDefault
@@ -23,13 +23,17 @@ export function Scene3D() {
         />
 
         {/* Lights */}
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={0.8} />
         <directionalLight
           position={[room.width / 2, room.ceilingHeight * 2, room.height / 2]}
-          intensity={0.5}
+          intensity={0.8}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
+        />
+        <pointLight
+          position={[room.width / 2, room.ceilingHeight, room.height / 2]}
+          intensity={0.5}
         />
 
         {/* Room */}

@@ -185,9 +185,20 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     const baseX = room.width / 2 - width / 2;
     const baseY = room.height / 2 - depth / 2;
 
+    // Determine category based on type
+    let category: "furniture" | "appliance" | "electronics" | "fixture" = "furniture";
+    if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
+      category = "appliance";
+    } else if (["tv", "air-conditioner", "air-purifier", "humidifier"].includes(type)) {
+      category = "electronics";
+    } else if (["sink", "toilet", "bathtub", "shower"].includes(type)) {
+      category = "fixture";
+    }
+
     set({
       pendingFurniture: {
         type,
+        category,
         name: preset?.name ?? template.label,
         x: baseX,
         y: baseY,

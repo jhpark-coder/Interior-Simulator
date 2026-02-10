@@ -22,6 +22,7 @@ describe("geometry2d utilities", () => {
       const item: FurnitureItem = {
         id: "1",
         type: "desk",
+        category: "furniture",
         name: "Desk",
         x: 100,
         y: 100,
@@ -44,6 +45,7 @@ describe("geometry2d utilities", () => {
       const item: FurnitureItem = {
         id: "1",
         type: "desk",
+        category: "furniture",
         name: "Desk",
         x: 100,
         y: 100,
@@ -80,6 +82,7 @@ describe("geometry2d utilities", () => {
       const item: FurnitureItem = {
         id: "1",
         type: "desk",
+        category: "furniture",
         name: "Desk",
         x: 1000,
         y: 1000,
@@ -100,6 +103,7 @@ describe("geometry2d utilities", () => {
       const item: FurnitureItem = {
         id: "1",
         type: "desk",
+        category: "furniture",
         name: "Desk",
         x: -50,
         y: -50,
