@@ -30,6 +30,7 @@ type FurnitureItemProps = {
 type PendingFurnitureItemProps = {
   item: PendingFurniture;
   room: Room;
+  allFurniture: FurnitureItem[];
   onUpdate: (patch: Partial<PendingFurniture>) => void;
 };
 
@@ -227,6 +228,7 @@ export function FurnitureLayer({
         <PendingFurnitureItem
           item={pendingFurniture}
           room={room}
+          allFurniture={furniture}
           onUpdate={onUpdatePending}
         />
       )}
@@ -356,19 +358,28 @@ function FurnitureItem({
   );
 }
 
-// Pending furniture component (semi-transparent, no collision check)
+// Pending furniture component (semi-transparent, shows collision status)
 function PendingFurnitureItem({
   item,
   room,
+  allFurniture,
   onUpdate,
 }: PendingFurnitureItemProps) {
   const groupRef = useRef<Konva.Group>(null);
+  const [hasCollision, setHasCollision] = useState(false);
 
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.rotation(item.rotation);
     }
   }, [item.rotation]);
+
+  // Check collision whenever position or rotation changes
+  useEffect(() => {
+    const testItem = { ...item, id: "pending" } as FurnitureItem;
+    const collision = checkCollisionWithOthers(testItem, allFurniture);
+    setHasCollision(collision);
+  }, [item.x, item.y, item.rotation, item.width, item.depth, allFurniture]);
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -406,6 +417,10 @@ function PendingFurnitureItem({
     onUpdate({ rotation: newRotation });
   };
 
+  // Color based on collision status (Starcraft style)
+  const fillColor = hasCollision ? "#ff4444" : "#44ff44";
+  const strokeColor = hasCollision ? "#cc0000" : "#00cc00";
+
   return (
     <Group
       ref={groupRef}
@@ -415,14 +430,14 @@ function PendingFurnitureItem({
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onWheel={handleWheel}
-      opacity={0.5}
+      opacity={0.6}
     >
       <Rect
         width={item.width}
         height={item.depth}
-        fill={getFurnitureColor(item.type)}
-        stroke="#4A90E2"
-        strokeWidth={3}
+        fill={fillColor}
+        stroke={strokeColor}
+        strokeWidth={4}
         cornerRadius={4}
         dash={[10, 5]}
       />
