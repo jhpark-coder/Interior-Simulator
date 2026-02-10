@@ -5,12 +5,16 @@ import type { FurnitureItem, FurnitureType, Room, SelectedEntity } from "../type
 import { snapPosition, constrainToRoom, checkCollisionWithOthers } from "../utils";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 
+type PendingFurniture = Omit<FurnitureItem, "id">;
+
 type FurnitureLayerProps = {
   furniture: FurnitureItem[];
+  pendingFurniture: PendingFurniture | null;
   room: Room;
   selectedEntity: SelectedEntity;
   onSelect: (id: string) => void;
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
+  onUpdatePending: (patch: Partial<PendingFurniture>) => void;
 };
 
 type FurnitureItemProps = {
@@ -18,8 +22,15 @@ type FurnitureItemProps = {
   room: Room;
   allFurniture: FurnitureItem[];
   isSelected: boolean;
+  isPending?: boolean;
   onSelect: (id: string) => void;
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
+};
+
+type PendingFurnitureItemProps = {
+  item: PendingFurniture;
+  room: Room;
+  onUpdate: (patch: Partial<PendingFurniture>) => void;
 };
 
 // Furniture colors by type
@@ -190,10 +201,12 @@ const renderFurnitureMarker = (item: FurnitureItem) => {
 
 export function FurnitureLayer({
   furniture,
+  pendingFurniture,
   room,
   selectedEntity,
   onSelect,
   onUpdate,
+  onUpdatePending,
 }: FurnitureLayerProps) {
   return (
     <Layer>
@@ -210,6 +223,13 @@ export function FurnitureLayer({
           onUpdate={onUpdate}
         />
       ))}
+      {pendingFurniture && (
+        <PendingFurnitureItem
+          item={pendingFurniture}
+          room={room}
+          onUpdate={onUpdatePending}
+        />
+      )}
     </Layer>
   );
 }
@@ -321,6 +341,93 @@ function FurnitureItem({
       />
       {/* Type-specific visual markers */}
       {renderFurnitureMarker(item)}
+      <Text
+        text={item.name}
+        width={item.width}
+        height={item.depth}
+        align="center"
+        verticalAlign="middle"
+        fontSize={16}
+        fontStyle="bold"
+        fill="white"
+        listening={false}
+      />
+    </Group>
+  );
+}
+
+// Pending furniture component (semi-transparent, no collision check)
+function PendingFurnitureItem({
+  item,
+  room,
+  onUpdate,
+}: PendingFurnitureItemProps) {
+  const groupRef = useRef<Konva.Group>(null);
+
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.rotation(item.rotation);
+    }
+  }, [item.rotation]);
+
+  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    let { x, y } = node.position();
+
+    // Apply snap
+    const snapped = snapPosition(x, y, room);
+    x = snapped.x;
+    y = snapped.y;
+
+    // Apply boundary constraints (but no collision check)
+    const testItem = { ...item, id: "pending", x, y } as FurnitureItem;
+    const constrained = constrainToRoom(testItem, room);
+    x = constrained.x;
+    y = constrained.y;
+
+    node.position({ x, y });
+
+    // Update store immediately
+    onUpdate({ x, y });
+  };
+
+  const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    const { x, y } = node.position();
+    onUpdate({ x, y });
+  };
+
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    const delta = e.evt.deltaY > 0 ? -1 : 1;
+    const rotationStep = e.evt.shiftKey ? 1 : 15;
+    const newRotation = (item.rotation + delta * rotationStep) % 360;
+
+    onUpdate({ rotation: newRotation });
+  };
+
+  return (
+    <Group
+      ref={groupRef}
+      x={item.x}
+      y={item.y}
+      draggable={true}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
+      onWheel={handleWheel}
+      opacity={0.5}
+    >
+      <Rect
+        width={item.width}
+        height={item.depth}
+        fill={getFurnitureColor(item.type)}
+        stroke="#4A90E2"
+        strokeWidth={3}
+        cornerRadius={4}
+        dash={[10, 5]}
+      />
+      {/* Type-specific visual markers */}
+      {renderFurnitureMarker(item as FurnitureItem)}
       <Text
         text={item.name}
         width={item.width}

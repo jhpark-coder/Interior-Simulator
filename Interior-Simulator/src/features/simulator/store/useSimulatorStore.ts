@@ -13,7 +13,7 @@ import type {
   WallSide,
 } from "../types";
 import { createHistory, pushHistory, undoHistory, redoHistory } from "./history";
-import { validateDoorPlacement, validateWindowPlacement, constrainOpeningOffset } from "../utils";
+import { validateDoorPlacement, validateWindowPlacement, constrainOpeningOffset, checkCollisionWithOthers } from "../utils";
 
 const createId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -221,13 +221,21 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         : null,
     })),
   commitPendingFurniture: () => {
-    const { pendingFurniture, room } = get();
+    const { pendingFurniture, furniture } = get();
     if (!pendingFurniture) return;
 
     const item: FurnitureItem = {
       ...pendingFurniture,
       id: createId(),
     };
+
+    // Check collision with existing furniture
+    if (checkCollisionWithOthers(item, furniture)) {
+      set({
+        validationErrors: ["이 위치에는 가구를 배치할 수 없습니다. 다른 가구와 겹칩니다."],
+      });
+      return;
+    }
 
     const snapshot = get().snapshot();
     const history = createHistory<LayoutDoc>(30);
@@ -236,11 +244,12 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     const newHistory = pushHistory(history, snapshot);
 
     set({
-      furniture: [...get().furniture, item],
+      furniture: [...furniture, item],
       pendingFurniture: null,
       selectedEntity: { kind: "furniture", id: item.id },
       historyPast: newHistory.past,
       historyFuture: newHistory.future,
+      validationErrors: [],
     });
   },
 

@@ -23,10 +23,12 @@ export function Canvas2D() {
   const doors = useSimulatorStore((state) => state.doors);
   const windows = useSimulatorStore((state) => state.windows);
   const selectedEntity = useSimulatorStore((state) => state.selectedEntity);
+  const pendingFurniture = useSimulatorStore((state) => state.pendingFurniture);
   const roomDimensionPlacement = useSimulatorStore((state) => state.roomDimensionPlacement);
   const selectEntity = useSimulatorStore((state) => state.selectEntity);
   const clearSelection = useSimulatorStore((state) => state.clearSelection);
   const updateFurniture = useSimulatorStore((state) => state.updateFurniture);
+  const updatePendingFurniture = useSimulatorStore((state) => state.updatePendingFurniture);
   const updateDoor = useSimulatorStore((state) => state.updateDoor);
   const updateWindow = useSimulatorStore((state) => state.updateWindow);
 
@@ -211,10 +213,12 @@ export function Canvas2D() {
           />
           <FurnitureLayer
             furniture={furniture}
+            pendingFurniture={pendingFurniture}
             room={room}
             selectedEntity={selectedEntity}
             onSelect={handleFurnitureSelect}
             onUpdate={updateFurniture}
+            onUpdatePending={updatePendingFurniture}
           />
           <DimensionLayer
             room={room}
