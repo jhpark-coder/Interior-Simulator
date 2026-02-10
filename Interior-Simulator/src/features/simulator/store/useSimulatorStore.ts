@@ -1,5 +1,11 @@
 ﻿import { create } from "zustand";
-import { DEFAULT_ROOM, FURNITURE_CATALOG, DEFAULT_DOOR, DEFAULT_WINDOW } from "../constants";
+import {
+  DEFAULT_ROOM,
+  FURNITURE_CATALOG,
+  DEFAULT_DOOR,
+  DEFAULT_WINDOW,
+  DEFAULT_FURNITURE_COLOR,
+} from "../constants";
 import type {
   DimensionPlacement,
   Door,
@@ -13,7 +19,13 @@ import type {
   WallSide,
 } from "../types";
 import { createHistory, pushHistory, undoHistory, redoHistory } from "./history";
-import { validateDoorPlacement, validateWindowPlacement, constrainOpeningOffset, checkCollisionWithOthers } from "../utils";
+import {
+  validateDoorPlacement,
+  validateWindowPlacement,
+  constrainOpeningOffset,
+  checkCollisionWithOthers,
+  constrainToRoom,
+} from "../utils";
 
 const createId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -52,6 +64,7 @@ const createFurnitureItem = (
     depth: template.depth,
     height: template.height,
     rotation: 0,
+    color: DEFAULT_FURNITURE_COLOR,
     zIndex: 0,
     locked: false,
     ...overrides,
@@ -81,8 +94,13 @@ const buildLayoutDoc = (
 type PendingFurniture = Omit<FurnitureItem, "id">;
 type PendingDoor = Omit<Door, "id">;
 type PendingWindow = Omit<Window, "id">;
+const FURNITURE_COLLISION_ERROR =
+  "이 위치에는 가구를 배치할 수 없습니다. 다른 가구와 겹칩니다.";
 type PendingFurniturePreset = Partial<
-  Pick<PendingFurniture, "name" | "width" | "depth" | "height" | "rotation" | "locked">
+  Pick<
+    PendingFurniture,
+    "name" | "width" | "depth" | "height" | "rotation" | "locked" | "color"
+  >
 >;
 
 type SimulatorState = {
@@ -99,6 +117,8 @@ type SimulatorState = {
   pendingFurniture: PendingFurniture | null;
   pendingDoor: PendingDoor | null;
   pendingWindow: PendingWindow | null;
+  placingFurnitureId: string | null;
+  placingFurniture: PendingFurniture | null;
   setRoom: (patch: Partial<Room>) => void;
   setViewMode: (mode: ViewMode) => void;
   setRoomDimensionPlacement: (patch: Partial<DimensionPlacement>) => void;
@@ -109,6 +129,10 @@ type SimulatorState = {
   setPendingFurniture: (type: FurnitureType, preset?: PendingFurniturePreset) => void;
   updatePendingFurniture: (patch: Partial<PendingFurniture>) => void;
   commitPendingFurniture: () => void;
+  startPlacementForFurniture: (id: string) => void;
+  updatePlacementFurniture: (patch: Partial<PendingFurniture>) => void;
+  commitPlacementFurniture: () => void;
+  cancelPlacementFurniture: () => void;
   setPendingDoor: (wall: WallSide) => void;
   updatePendingDoor: (patch: Partial<PendingDoor>) => void;
   commitPendingDoor: () => void;
@@ -147,6 +171,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   pendingFurniture: null,
   pendingDoor: null,
   pendingWindow: null,
+  placingFurnitureId: null,
+  placingFurniture: null,
   setRoom: (patch) =>
     set((state) => ({
       room: { ...state.room, ...patch },
@@ -206,11 +232,14 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         depth,
         height,
         rotation: preset?.rotation ?? 0,
+        color: preset?.color ?? DEFAULT_FURNITURE_COLOR,
         zIndex: 0,
         locked: preset?.locked ?? false,
       },
       pendingDoor: null,
       pendingWindow: null,
+      placingFurnitureId: null,
+      placingFurniture: null,
       selectedEntity: null,
     });
   },
@@ -232,7 +261,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     // Check collision with existing furniture
     if (checkCollisionWithOthers(item, furniture)) {
       set({
-        validationErrors: ["이 위치에는 가구를 배치할 수 없습니다. 다른 가구와 겹칩니다."],
+        validationErrors: [FURNITURE_COLLISION_ERROR],
       });
       return;
     }
@@ -252,6 +281,73 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       validationErrors: [],
     });
   },
+  startPlacementForFurniture: (id) => {
+    const { furniture } = get();
+    const target = furniture.find((item) => item.id === id);
+    if (!target) return;
+    const { id: _targetId, ...draft } = target;
+
+    set({
+      pendingFurniture: null,
+      pendingDoor: null,
+      pendingWindow: null,
+      placingFurnitureId: id,
+      placingFurniture: draft,
+      selectedEntity: { kind: "furniture", id },
+      validationErrors: [],
+    });
+  },
+  updatePlacementFurniture: (patch) =>
+    set((state) => ({
+      placingFurniture: state.placingFurniture
+        ? { ...state.placingFurniture, ...patch }
+        : null,
+    })),
+  commitPlacementFurniture: () => {
+    const { placingFurnitureId, placingFurniture, furniture, room } = get();
+    if (!placingFurnitureId || !placingFurniture) return;
+
+    const item: FurnitureItem = {
+      ...placingFurniture,
+      id: placingFurnitureId,
+    };
+    const constrained = constrainToRoom(item, room);
+    item.x = constrained.x;
+    item.y = constrained.y;
+
+    if (checkCollisionWithOthers(item, furniture)) {
+      set({ validationErrors: [FURNITURE_COLLISION_ERROR] });
+      return;
+    }
+
+    const snapshot = get().snapshot();
+    const history = createHistory<LayoutDoc>(30);
+    history.past = get().historyPast;
+    history.future = get().historyFuture;
+    const newHistory = pushHistory(history, snapshot);
+
+    set({
+      furniture: furniture.map((existing) =>
+        existing.id === placingFurnitureId ? item : existing
+      ),
+      placingFurnitureId: null,
+      placingFurniture: null,
+      selectedEntity: { kind: "furniture", id: placingFurnitureId },
+      historyPast: newHistory.past,
+      historyFuture: newHistory.future,
+      validationErrors: [],
+    });
+  },
+  cancelPlacementFurniture: () => {
+    const { placingFurnitureId } = get();
+    set((state) => ({
+      placingFurnitureId: null,
+      placingFurniture: null,
+      selectedEntity:
+        placingFurnitureId ? { kind: "furniture", id: placingFurnitureId } : state.selectedEntity,
+      validationErrors: [],
+    }));
+  },
 
   // Pending door
   setPendingDoor: (wall) => {
@@ -263,6 +359,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       },
       pendingFurniture: null,
       pendingWindow: null,
+      placingFurnitureId: null,
+      placingFurniture: null,
       selectedEntity: null,
     });
   },
@@ -320,6 +418,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       },
       pendingFurniture: null,
       pendingDoor: null,
+      placingFurnitureId: null,
+      placingFurniture: null,
       selectedEntity: null,
     });
   },
@@ -374,6 +474,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       pendingFurniture: null,
       pendingDoor: null,
       pendingWindow: null,
+      placingFurnitureId: null,
+      placingFurniture: null,
     }),
   addFurniture: (type, overrides) =>
     set((state) => {
@@ -388,12 +490,42 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         historyFuture: newHistory.future,
       };
     }),
-  updateFurniture: (id, patch) =>
-    set((state) => ({
-      furniture: state.furniture.map((item) =>
-        item.id === id ? { ...item, ...patch } : item
-      ),
-    })),
+  updateFurniture: (id, patch) => {
+    const { furniture, room } = get();
+    const needsPlacementValidation =
+      patch.x !== undefined ||
+      patch.y !== undefined ||
+      patch.rotation !== undefined ||
+      patch.width !== undefined ||
+      patch.depth !== undefined;
+
+    let collisionRejected = false;
+
+    const updatedFurniture = furniture.map((item) => {
+      if (item.id !== id) return item;
+      const candidate: FurnitureItem = { ...item, ...patch };
+
+      if (!needsPlacementValidation) {
+        return candidate;
+      }
+
+      const constrained = constrainToRoom(candidate, room);
+      candidate.x = constrained.x;
+      candidate.y = constrained.y;
+
+      if (checkCollisionWithOthers(candidate, furniture)) {
+        collisionRejected = true;
+        return item;
+      }
+
+      return candidate;
+    });
+
+    set({
+      furniture: updatedFurniture,
+      validationErrors: collisionRejected ? [FURNITURE_COLLISION_ERROR] : [],
+    });
+  },
   removeFurniture: (id) => {
     const snapshot = get().snapshot();
     const history = createHistory<LayoutDoc>(30);
@@ -408,6 +540,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         state.selectedEntity.id === id
           ? null
           : state.selectedEntity,
+      placingFurnitureId: state.placingFurnitureId === id ? null : state.placingFurnitureId,
+      placingFurniture: state.placingFurnitureId === id ? null : state.placingFurniture,
       historyPast: newHistory.past,
       historyFuture: newHistory.future,
     }));
@@ -625,6 +759,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         furniture: snapshot.furniture,
         doors: snapshot.doors,
         windows: snapshot.windows,
+        pendingFurniture: null,
+        pendingDoor: null,
+        pendingWindow: null,
+        placingFurnitureId: null,
+        placingFurniture: null,
         historyPast: newHistory.past,
         historyFuture: newHistory.future,
       });
@@ -643,6 +782,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         furniture: snapshot.furniture,
         doors: snapshot.doors,
         windows: snapshot.windows,
+        pendingFurniture: null,
+        pendingDoor: null,
+        pendingWindow: null,
+        placingFurnitureId: null,
+        placingFurniture: null,
         historyPast: newHistory.past,
         historyFuture: newHistory.future,
       });
@@ -654,6 +798,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       furniture: layout.furniture,
       doors: layout.doors,
       windows: layout.windows,
+      pendingFurniture: null,
+      pendingDoor: null,
+      pendingWindow: null,
+      placingFurnitureId: null,
+      placingFurniture: null,
       historyPast: [],
       historyFuture: [],
     });

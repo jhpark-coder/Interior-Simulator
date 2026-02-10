@@ -290,36 +290,39 @@ export function DimensionLayer({
     )
   );
 
-  // 모든 가구의 치수 표시 (회전되지 않은 가구만)
+  // 모든 가구의 치수 표시 (회전 포함)
   furniture.forEach((item) => {
-    if (item.rotation === 0) {
-      const furnitureDimensionInset = toWorld(20);
-      const isSelected = selectedEntity?.kind === "furniture" && selectedEntity.id === item.id;
+    const furnitureDimensionInset = toWorld(20);
+    const halfWidth = item.width / 2;
+    const halfDepth = item.depth / 2;
 
-      // 가구 내부 가로 치수
-      dimensions.push(
-        drawHorizontalDimension(
-          item.x,
-          item.x + item.width,
-          item.y + furnitureDimensionInset,
+    dimensions.push(
+      <Group
+        key={`furniture-dim-group-${item.id}`}
+        x={item.x + halfWidth}
+        y={item.y + halfDepth}
+        offsetX={halfWidth}
+        offsetY={halfDepth}
+        rotation={item.rotation}
+      >
+        {drawHorizontalDimension(
+          0,
+          item.width,
+          furnitureDimensionInset,
           `${item.width} mm`,
           `furniture-width-${item.id}`,
           { labelSide: "bottom" }
-        )
-      );
-
-      // 가구 내부 세로 치수
-      dimensions.push(
-        drawVerticalDimension(
-          item.y,
-          item.y + item.depth,
-          item.x + furnitureDimensionInset,
+        )}
+        {drawVerticalDimension(
+          0,
+          item.depth,
+          furnitureDimensionInset,
           `${item.depth} mm`,
           `furniture-depth-${item.id}`,
           { labelSide: "right", labelRotation: 0 }
-        )
-      );
-    }
+        )}
+      </Group>
+    );
   });
 
   // 문 치수 표시

@@ -24,11 +24,19 @@ export function Canvas2D() {
   const windows = useSimulatorStore((state) => state.windows);
   const selectedEntity = useSimulatorStore((state) => state.selectedEntity);
   const pendingFurniture = useSimulatorStore((state) => state.pendingFurniture);
+  const placingFurnitureId = useSimulatorStore((state) => state.placingFurnitureId);
+  const placingFurniture = useSimulatorStore((state) => state.placingFurniture);
   const roomDimensionPlacement = useSimulatorStore((state) => state.roomDimensionPlacement);
   const selectEntity = useSimulatorStore((state) => state.selectEntity);
   const clearSelection = useSimulatorStore((state) => state.clearSelection);
+  const startPlacementForFurniture = useSimulatorStore(
+    (state) => state.startPlacementForFurniture
+  );
   const updateFurniture = useSimulatorStore((state) => state.updateFurniture);
   const updatePendingFurniture = useSimulatorStore((state) => state.updatePendingFurniture);
+  const updatePlacementFurniture = useSimulatorStore(
+    (state) => state.updatePlacementFurniture
+  );
   const updateDoor = useSimulatorStore((state) => state.updateDoor);
   const updateWindow = useSimulatorStore((state) => state.updateWindow);
 
@@ -67,8 +75,8 @@ export function Canvas2D() {
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
 
-    // If a furniture is selected, rotation is handled by FurnitureItem
-    if (selectedEntity?.kind === "furniture") {
+    // During placement mode, wheel is reserved for furniture rotation.
+    if (pendingFurniture || placingFurniture) {
       return;
     }
 
@@ -168,6 +176,13 @@ export function Canvas2D() {
     }
   };
 
+  const furnitureForDimensions =
+    placingFurniture && placingFurnitureId
+      ? furniture.map((item) =>
+          item.id === placingFurnitureId ? { ...placingFurniture, id: placingFurnitureId } : item
+        )
+      : furniture;
+
   return (
     <div className="canvas-root">
       <div className="canvas-header">
@@ -214,15 +229,19 @@ export function Canvas2D() {
           <FurnitureLayer
             furniture={furniture}
             pendingFurniture={pendingFurniture}
+            placingFurnitureId={placingFurnitureId}
+            placingFurniture={placingFurniture}
             room={room}
             selectedEntity={selectedEntity}
             onSelect={handleFurnitureSelect}
+            onStartPlacement={startPlacementForFurniture}
             onUpdate={updateFurniture}
             onUpdatePending={updatePendingFurniture}
+            onUpdatePlacing={updatePlacementFurniture}
           />
           <DimensionLayer
             room={room}
-            furniture={furniture}
+            furniture={furnitureForDimensions}
             doors={doors}
             windows={windows}
             selectedEntity={selectedEntity}

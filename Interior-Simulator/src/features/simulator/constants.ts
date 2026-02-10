@@ -10,6 +10,8 @@ export const DEFAULT_ROOM: Room = {
   displayUnit: "mm",
 };
 
+export const DEFAULT_FURNITURE_COLOR = "#cfcfcf";
+
 // Legacy support - will be deprecated
 export const FURNITURE_CATALOG: Record<
   FurnitureType,

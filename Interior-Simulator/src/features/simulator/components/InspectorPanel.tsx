@@ -1,6 +1,7 @@
 import "./InspectorPanel.css";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import type { Room, WallSide } from "../types";
+import { DEFAULT_FURNITURE_COLOR } from "../constants";
 
 const wallLabels: Record<WallSide, string> = {
   north: "북쪽",
@@ -26,6 +27,21 @@ const numberField = (
   </label>
 );
 
+const colorField = (
+  label: string,
+  value: string,
+  onChange: (next: string) => void
+) => (
+  <label className="inspector-field">
+    <span>{label}</span>
+    <input
+      type="color"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  </label>
+);
+
 export function InspectorPanel() {
   const room = useSimulatorStore((state) => state.room);
   const furniture = useSimulatorStore((state) => state.furniture);
@@ -35,7 +51,12 @@ export function InspectorPanel() {
   const pendingFurniture = useSimulatorStore((state) => state.pendingFurniture);
   const pendingDoor = useSimulatorStore((state) => state.pendingDoor);
   const pendingWindow = useSimulatorStore((state) => state.pendingWindow);
+  const placingFurnitureId = useSimulatorStore((state) => state.placingFurnitureId);
+  const placingFurniture = useSimulatorStore((state) => state.placingFurniture);
   const setRoom = useSimulatorStore((state) => state.setRoom);
+  const startPlacementForFurniture = useSimulatorStore(
+    (state) => state.startPlacementForFurniture
+  );
   const updateFurniture = useSimulatorStore((state) => state.updateFurniture);
   const removeFurniture = useSimulatorStore((state) => state.removeFurniture);
   const updateDoor = useSimulatorStore((state) => state.updateDoor);
@@ -44,6 +65,15 @@ export function InspectorPanel() {
   const removeWindow = useSimulatorStore((state) => state.removeWindow);
   const updatePendingFurniture = useSimulatorStore((state) => state.updatePendingFurniture);
   const commitPendingFurniture = useSimulatorStore((state) => state.commitPendingFurniture);
+  const updatePlacementFurniture = useSimulatorStore(
+    (state) => state.updatePlacementFurniture
+  );
+  const commitPlacementFurniture = useSimulatorStore(
+    (state) => state.commitPlacementFurniture
+  );
+  const cancelPlacementFurniture = useSimulatorStore(
+    (state) => state.cancelPlacementFurniture
+  );
   const updatePendingDoor = useSimulatorStore((state) => state.updatePendingDoor);
   const commitPendingDoor = useSimulatorStore((state) => state.commitPendingDoor);
   const updatePendingWindow = useSimulatorStore((state) => state.updatePendingWindow);
@@ -66,6 +96,9 @@ export function InspectorPanel() {
     selected?.kind === "window"
       ? windows.find((w) => w.id === selected.id)
       : null;
+  const placingOriginalFurniture = placingFurnitureId
+    ? furniture.find((item) => item.id === placingFurnitureId)
+    : null;
 
   const normalizeRotation = (angle: number) => ((angle % 360) + 360) % 360;
 
@@ -84,8 +117,15 @@ export function InspectorPanel() {
     });
   };
 
+  const rotatePlacingFurniture = (delta: number) => {
+    if (!placingFurniture) return;
+    updatePlacementFurniture({
+      rotation: normalizeRotation(placingFurniture.rotation + delta),
+    });
+  };
+
   // Determine what to show
-  const hasPending = pendingFurniture || pendingDoor || pendingWindow;
+  const hasPending = pendingFurniture || pendingDoor || pendingWindow || placingFurniture;
   const showRoom = !hasPending && selected?.kind === "room";
   const showFurniture = !hasPending && selectedFurniture;
   const showDoor = !hasPending && selectedDoor;
@@ -94,6 +134,87 @@ export function InspectorPanel() {
 
   return (
     <div className="inspector-panel">
+      {/* Placement Mode for Existing Furniture */}
+      {placingFurniture && (
+        <>
+          <div>
+            <p className="panel-kicker">배치 모드</p>
+            <h2 className="panel-title">
+              {placingOriginalFurniture?.name ?? placingFurniture.name}
+            </h2>
+          </div>
+          <div className="inspector-grid">
+            {numberField("X (mm)", Math.round(placingFurniture.x), (next) =>
+              updatePlacementFurniture({ x: next })
+            )}
+            {numberField("Y (mm)", Math.round(placingFurniture.y), (next) =>
+              updatePlacementFurniture({ y: next })
+            )}
+            {numberField("너비 (mm)", placingFurniture.width, (next) =>
+              updatePlacementFurniture({ width: Math.max(next, 100) })
+            )}
+            {numberField("깊이 (mm)", placingFurniture.depth, (next) =>
+              updatePlacementFurniture({ depth: Math.max(next, 100) })
+            )}
+            {numberField("높이 (mm)", placingFurniture.height, (next) =>
+              updatePlacementFurniture({ height: Math.max(next, 100) })
+            )}
+            {numberField("회전 (도)", Math.round(placingFurniture.rotation), (next) =>
+              updatePlacementFurniture({ rotation: normalizeRotation(next) })
+            )}
+            {colorField("색상", placingFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) =>
+              updatePlacementFurniture({ color: next })
+            )}
+          </div>
+          <div className="inspector-rotate-actions">
+            <button type="button" onClick={() => rotatePlacingFurniture(-15)}>
+              -15°
+            </button>
+            <button type="button" onClick={() => rotatePlacingFurniture(15)}>
+              +15°
+            </button>
+            <button type="button" onClick={() => rotatePlacingFurniture(-90)}>
+              -90°
+            </button>
+            <button type="button" onClick={() => rotatePlacingFurniture(90)}>
+              +90°
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button
+              onClick={commitPlacementFurniture}
+              style={{
+                flex: 1,
+                padding: "0.75rem 1rem",
+                background: "#1f8f4f",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              배치하기
+            </button>
+            <button
+              onClick={cancelPlacementFurniture}
+              style={{
+                flex: 1,
+                padding: "0.75rem 1rem",
+                background: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              취소
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Pending Furniture */}
       {pendingFurniture && (
         <>
@@ -119,6 +240,9 @@ export function InspectorPanel() {
             )}
             {numberField("회전 (도)", Math.round(pendingFurniture.rotation), (next) =>
               updatePendingFurniture({ rotation: normalizeRotation(next) })
+            )}
+            {colorField("색상", pendingFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) =>
+              updatePendingFurniture({ color: next })
             )}
           </div>
           <div className="inspector-rotate-actions">
@@ -394,7 +518,24 @@ export function InspectorPanel() {
           <div>
             <p className="panel-kicker">선택됨</p>
             <h2 className="panel-title">{selectedFurniture.name}</h2>
+            <p className="panel-subtitle">더블클릭 또는 아래 버튼으로 배치 모드로 전환</p>
           </div>
+          <button
+            type="button"
+            onClick={() => startPlacementForFurniture(selectedFurniture.id)}
+            style={{
+              marginTop: "0.5rem",
+              padding: "0.5rem 0.75rem",
+              background: "#4A90E2",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            배치 모드로 전환
+          </button>
           <div className="inspector-grid">
             {numberField("X (mm)", Math.round(selectedFurniture.x), (next) => {
               updateFurniture(selectedFurniture.id, { x: next });
@@ -430,6 +571,10 @@ export function InspectorPanel() {
                 commitHistory();
               }
             )}
+            {colorField("색상", selectedFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) => {
+              updateFurniture(selectedFurniture.id, { color: next });
+              commitHistory();
+            })}
           </div>
           <div className="inspector-rotate-actions">
             <button type="button" onClick={() => rotateSelectedFurniture(-15)}>

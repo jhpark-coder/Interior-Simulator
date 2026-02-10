@@ -26,19 +26,21 @@ export function getRotatedBounds(item: FurnitureItem): {
   const rad = degToRad(item.rotation);
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
+  const centerX = item.x + item.width / 2;
+  const centerY = item.y + item.depth / 2;
 
-  // Four corners of the rectangle
+  // Four corners of the rectangle relative to center
   const corners = [
-    { x: 0, y: 0 },
-    { x: item.width, y: 0 },
-    { x: item.width, y: item.depth },
-    { x: 0, y: item.depth },
+    { x: -item.width / 2, y: -item.depth / 2 },
+    { x: item.width / 2, y: -item.depth / 2 },
+    { x: item.width / 2, y: item.depth / 2 },
+    { x: -item.width / 2, y: item.depth / 2 },
   ];
 
   // Rotate each corner
   const rotated = corners.map((corner) => ({
-    x: item.x + corner.x * cos - corner.y * sin,
-    y: item.y + corner.x * sin + corner.y * cos,
+    x: centerX + corner.x * cos - corner.y * sin,
+    y: centerY + corner.x * sin + corner.y * cos,
   }));
 
   // Find bounding box
@@ -93,17 +95,19 @@ function getRotatedCorners(item: FurnitureItem): { x: number; y: number }[] {
   const rad = degToRad(item.rotation);
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
+  const centerX = item.x + item.width / 2;
+  const centerY = item.y + item.depth / 2;
 
   const corners = [
-    { x: 0, y: 0 },
-    { x: item.width, y: 0 },
-    { x: item.width, y: item.depth },
-    { x: 0, y: item.depth },
+    { x: -item.width / 2, y: -item.depth / 2 },
+    { x: item.width / 2, y: -item.depth / 2 },
+    { x: item.width / 2, y: item.depth / 2 },
+    { x: -item.width / 2, y: item.depth / 2 },
   ];
 
   return corners.map((corner) => ({
-    x: item.x + corner.x * cos - corner.y * sin,
-    y: item.y + corner.x * sin + corner.y * cos,
+    x: centerX + corner.x * cos - corner.y * sin,
+    y: centerY + corner.x * sin + corner.y * cos,
   }));
 }
 
@@ -191,4 +195,132 @@ export function checkCollisionWithOthers(
     }
   }
   return false;
+}
+
+/**
+ * Point type for polygon operations
+ */
+type Point = { x: number; y: number };
+
+function getPolygonSignedArea(polygon: Point[]): number {
+  let area = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+    area += current.x * next.y - next.x * current.y;
+  }
+  return area / 2;
+}
+
+/**
+ * Clips a polygon against an edge using Sutherland-Hodgman algorithm
+ */
+function clipPolygonByEdge(
+  polygon: Point[],
+  edge: [Point, Point],
+  clipPolygonClockwise: boolean
+): Point[] {
+  if (polygon.length === 0) return [];
+
+  const [p1, p2] = edge;
+  const edgeVec = { x: p2.x - p1.x, y: p2.y - p1.y };
+  const result: Point[] = [];
+  const epsilon = 1e-9;
+
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+
+    // Use edge x point cross product to consistently determine inside/outside.
+    const currentSide =
+      edgeVec.x * (current.y - p1.y) - edgeVec.y * (current.x - p1.x);
+    const nextSide = edgeVec.x * (next.y - p1.y) - edgeVec.y * (next.x - p1.x);
+    const currentInside = clipPolygonClockwise
+      ? currentSide <= epsilon
+      : currentSide >= -epsilon;
+    const nextInside = clipPolygonClockwise ? nextSide <= epsilon : nextSide >= -epsilon;
+
+    if (currentInside) {
+      result.push(current);
+      if (!nextInside) {
+        // Edge crosses from inside to outside, add intersection
+        const intersection = getLineIntersection(current, next, p1, p2);
+        if (intersection) result.push(intersection);
+      }
+    } else if (nextInside) {
+      // Edge crosses from outside to inside, add intersection
+      const intersection = getLineIntersection(current, next, p1, p2);
+      if (intersection) result.push(intersection);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Gets the intersection point of two line segments
+ */
+function getLineIntersection(
+  p1: Point,
+  p2: Point,
+  p3: Point,
+  p4: Point
+): Point | null {
+  const denom =
+    (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+  if (Math.abs(denom) < 1e-10) return null;
+
+  const t =
+    ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / denom;
+
+  return {
+    x: p1.x + t * (p2.x - p1.x),
+    y: p1.y + t * (p2.y - p1.y),
+  };
+}
+
+/**
+ * Calculates the intersection polygon of two furniture items using Sutherland-Hodgman algorithm
+ */
+export function getPolygonIntersection(
+  item1: FurnitureItem,
+  item2: FurnitureItem
+): Point[] {
+  const corners1 = getRotatedCorners(item1);
+  const corners2 = getRotatedCorners(item2);
+  const clipPolygonClockwise = getPolygonSignedArea(corners2) < 0;
+
+  // Start with corners1 as the subject polygon
+  let result = [...corners1];
+
+  // Clip against each edge of corners2
+  for (let i = 0; i < corners2.length; i++) {
+    const edge: [Point, Point] = [corners2[i], corners2[(i + 1) % corners2.length]];
+    result = clipPolygonByEdge(result, edge, clipPolygonClockwise);
+    if (result.length === 0) break;
+  }
+
+  return result;
+}
+
+/**
+ * Gets all collision polygons for a furniture item with other furniture
+ */
+export function getCollisionPolygons(
+  item: FurnitureItem,
+  allFurniture: FurnitureItem[]
+): Point[][] {
+  const collisions: Point[][] = [];
+
+  for (const other of allFurniture) {
+    if (other.id === item.id) continue;
+    if (checkFurnitureCollision(item, other)) {
+      const intersection = getPolygonIntersection(item, other);
+      if (intersection.length > 0) {
+        collisions.push(intersection);
+      }
+    }
+  }
+
+  return collisions;
 }

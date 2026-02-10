@@ -1,8 +1,9 @@
 import { useRef, useEffect, useState } from "react";
 import { Layer, Rect, Text, Group, Circle, Line } from "react-konva";
 import type Konva from "konva";
-import type { FurnitureItem, FurnitureType, Room, SelectedEntity } from "../types";
-import { snapPosition, constrainToRoom, checkCollisionWithOthers } from "../utils";
+import type { FurnitureItem, Room, SelectedEntity } from "../types";
+import { snapPosition, constrainToRoom, checkCollisionWithOthers, getCollisionPolygons, degToRad } from "../utils";
+import { DEFAULT_FURNITURE_COLOR } from "../constants";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 
 type PendingFurniture = Omit<FurnitureItem, "id">;
@@ -10,11 +11,15 @@ type PendingFurniture = Omit<FurnitureItem, "id">;
 type FurnitureLayerProps = {
   furniture: FurnitureItem[];
   pendingFurniture: PendingFurniture | null;
+  placingFurnitureId: string | null;
+  placingFurniture: PendingFurniture | null;
   room: Room;
   selectedEntity: SelectedEntity;
   onSelect: (id: string) => void;
+  onStartPlacement: (id: string) => void;
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
   onUpdatePending: (patch: Partial<PendingFurniture>) => void;
+  onUpdatePlacing: (patch: Partial<PendingFurniture>) => void;
 };
 
 type FurnitureItemProps = {
@@ -22,8 +27,9 @@ type FurnitureItemProps = {
   room: Room;
   allFurniture: FurnitureItem[];
   isSelected: boolean;
-  isPending?: boolean;
+  isPlacementEnabled?: boolean;
   onSelect: (id: string) => void;
+  onStartPlacement: (id: string) => void;
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
 };
 
@@ -34,66 +40,7 @@ type PendingFurnitureItemProps = {
   onUpdate: (patch: Partial<PendingFurniture>) => void;
 };
 
-// Furniture colors by type
-const getFurnitureColor = (type: FurnitureType): string => {
-  const colors: Record<FurnitureType, string> = {
-    // Furniture
-    bed: "#8B4513",           // Brown
-    desk: "#4169E1",          // Royal Blue
-    chair: "#FF8C00",         // Dark Orange
-    closet: "#8B008B",        // Dark Magenta
-    sofa: "#DC143C",          // Crimson
-    table: "#228B22",         // Forest Green
-    // Appliances
-    refrigerator: "#C0C0C0",  // Silver
-    "washing-machine": "#7B68EE", // Medium Slate Blue
-    dryer: "#9370DB",         // Medium Purple
-    dishwasher: "#4682B4",    // Steel Blue
-    oven: "#696969",          // Dim Gray
-    microwave: "#778899",     // Light Slate Gray
-    // Electronics
-    tv: "#2F4F4F",            // Dark Slate Gray
-    "air-conditioner": "#87CEEB", // Sky Blue
-    "air-purifier": "#98FB98", // Pale Green
-    humidifier: "#ADD8E6",    // Light Blue
-    // Fixtures
-    sink: "#F5F5DC",          // Beige
-    toilet: "#FFFACD",        // Lemon Chiffon
-    bathtub: "#E0FFFF",       // Light Cyan
-    shower: "#F0F8FF",        // Alice Blue
-  };
-  return colors[type] || "#888888";
-};
-
-const getFurnitureStroke = (type: FurnitureType): string => {
-  const strokes: Record<FurnitureType, string> = {
-    // Furniture
-    bed: "#654321",
-    desk: "#2E5C8A",
-    chair: "#CC6600",
-    closet: "#660066",
-    sofa: "#AA0000",
-    table: "#1B6B1B",
-    // Appliances
-    refrigerator: "#A9A9A9",
-    "washing-machine": "#6A5ACD",
-    dryer: "#8A2BE2",
-    dishwasher: "#4169E1",
-    oven: "#555555",
-    microwave: "#696969",
-    // Electronics
-    tv: "#000000",
-    "air-conditioner": "#4682B4",
-    "air-purifier": "#32CD32",
-    humidifier: "#4682B4",
-    // Fixtures
-    sink: "#D2B48C",
-    toilet: "#F0E68C",
-    bathtub: "#B0E0E6",
-    shower: "#87CEEB",
-  };
-  return strokes[type] || "#666666";
-};
+const DEFAULT_FURNITURE_STROKE = "#a8a8a8";
 
 // Render type-specific markers
 const renderFurnitureMarker = (item: FurnitureItem) => {
@@ -203,15 +150,21 @@ const renderFurnitureMarker = (item: FurnitureItem) => {
 export function FurnitureLayer({
   furniture,
   pendingFurniture,
+  placingFurnitureId,
+  placingFurniture,
   room,
   selectedEntity,
   onSelect,
+  onStartPlacement,
   onUpdate,
   onUpdatePending,
+  onUpdatePlacing,
 }: FurnitureLayerProps) {
   return (
     <Layer>
-      {furniture.map((item) => (
+      {furniture
+        .filter((item) => item.id !== placingFurnitureId)
+        .map((item) => (
         <FurnitureItem
           key={item.id}
           item={item}
@@ -220,10 +173,20 @@ export function FurnitureLayer({
           isSelected={
             selectedEntity?.kind === "furniture" && selectedEntity.id === item.id
           }
+          isPlacementEnabled={false}
           onSelect={onSelect}
+          onStartPlacement={onStartPlacement}
           onUpdate={onUpdate}
         />
       ))}
+      {placingFurniture && placingFurnitureId && (
+        <PendingFurnitureItem
+          item={placingFurniture}
+          room={room}
+          allFurniture={furniture.filter((item) => item.id !== placingFurnitureId)}
+          onUpdate={onUpdatePlacing}
+        />
+      )}
       {pendingFurniture && (
         <PendingFurnitureItem
           item={pendingFurniture}
@@ -241,11 +204,15 @@ function FurnitureItem({
   room,
   allFurniture,
   isSelected,
+  isPlacementEnabled = false,
   onSelect,
+  onStartPlacement,
   onUpdate,
 }: FurnitureItemProps) {
   const groupRef = useRef<Konva.Group>(null);
   const [lastValidPos, setLastValidPos] = useState({ x: item.x, y: item.y });
+  const halfWidth = item.width / 2;
+  const halfDepth = item.depth / 2;
 
   useEffect(() => {
     if (groupRef.current) {
@@ -260,7 +227,9 @@ function FurnitureItem({
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
-    let { x, y } = node.position();
+    const nodePos = node.position();
+    let x = nodePos.x - halfWidth;
+    let y = nodePos.y - halfDepth;
 
     // Apply snap
     const snapped = snapPosition(x, y, room);
@@ -276,12 +245,18 @@ function FurnitureItem({
     const testItem = { ...item, x, y };
     if (checkCollisionWithOthers(testItem, allFurniture)) {
       // Collision detected, revert to last valid position
-      node.position(lastValidPos);
+      node.position({
+        x: lastValidPos.x + halfWidth,
+        y: lastValidPos.y + halfDepth,
+      });
       return;
     }
 
     // No collision, update position
-    node.position({ x, y });
+    node.position({
+      x: x + halfWidth,
+      y: y + halfDepth,
+    });
     setLastValidPos({ x, y });
 
     // Update store immediately for real-time dimension updates
@@ -290,14 +265,16 @@ function FurnitureItem({
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
-    const { x, y } = node.position();
+    const nodePos = node.position();
+    const x = nodePos.x - halfWidth;
+    const y = nodePos.y - halfDepth;
     onUpdate(item.id, { x, y });
     // Commit history after drag ends
     useSimulatorStore.getState().commitHistory();
   };
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
-    if (!isSelected) return;
+    if (!isSelected || !isPlacementEnabled) return;
 
     e.evt.preventDefault();
     const delta = e.evt.deltaY > 0 ? -1 : 1;
@@ -320,24 +297,32 @@ function FurnitureItem({
     onSelect(item.id);
   };
 
+  const handleDoubleClick = () => {
+    onStartPlacement(item.id);
+  };
+
   return (
     <Group
       ref={groupRef}
-      x={item.x}
-      y={item.y}
-      draggable={!item.locked}
+      x={item.x + halfWidth}
+      y={item.y + halfDepth}
+      offsetX={halfWidth}
+      offsetY={halfDepth}
+      draggable={isPlacementEnabled && !item.locked}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onWheel={handleWheel}
       onClick={handleClick}
       onTap={handleClick}
+      onDblClick={handleDoubleClick}
+      onDblTap={handleDoubleClick}
     >
       <Rect
         width={item.width}
         height={item.depth}
-        fill={getFurnitureColor(item.type)}
-        stroke={isSelected ? "#4A90E2" : getFurnitureStroke(item.type)}
+        fill={item.color ?? DEFAULT_FURNITURE_COLOR}
+        stroke={isSelected ? "#4A90E2" : DEFAULT_FURNITURE_STROKE}
         strokeWidth={isSelected ? 4 : 2}
         cornerRadius={4}
       />
@@ -366,7 +351,9 @@ function PendingFurnitureItem({
   onUpdate,
 }: PendingFurnitureItemProps) {
   const groupRef = useRef<Konva.Group>(null);
-  const [hasCollision, setHasCollision] = useState(false);
+  const [collisionPolygons, setCollisionPolygons] = useState<{ x: number; y: number }[][]>([]);
+  const halfWidth = item.width / 2;
+  const halfDepth = item.depth / 2;
 
   useEffect(() => {
     if (groupRef.current) {
@@ -374,16 +361,18 @@ function PendingFurnitureItem({
     }
   }, [item.rotation]);
 
-  // Check collision whenever position or rotation changes
+  // Calculate collision polygons whenever position or rotation changes
   useEffect(() => {
     const testItem = { ...item, id: "pending" } as FurnitureItem;
-    const collision = checkCollisionWithOthers(testItem, allFurniture);
-    setHasCollision(collision);
+    const polygons = getCollisionPolygons(testItem, allFurniture);
+    setCollisionPolygons(polygons);
   }, [item.x, item.y, item.rotation, item.width, item.depth, allFurniture]);
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
-    let { x, y } = node.position();
+    const nodePos = node.position();
+    let x = nodePos.x - halfWidth;
+    let y = nodePos.y - halfDepth;
 
     // Apply snap
     const snapped = snapPosition(x, y, room);
@@ -396,7 +385,10 @@ function PendingFurnitureItem({
     x = constrained.x;
     y = constrained.y;
 
-    node.position({ x, y });
+    node.position({
+      x: x + halfWidth,
+      y: y + halfDepth,
+    });
 
     // Update store immediately
     onUpdate({ x, y });
@@ -404,7 +396,9 @@ function PendingFurnitureItem({
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
-    const { x, y } = node.position();
+    const nodePos = node.position();
+    const x = nodePos.x - halfWidth;
+    const y = nodePos.y - halfDepth;
     onUpdate({ x, y });
   };
 
@@ -417,26 +411,24 @@ function PendingFurnitureItem({
     onUpdate({ rotation: newRotation });
   };
 
-  // Color based on collision status (Starcraft style)
-  const fillColor = hasCollision ? "#ff4444" : "#44ff44";
-  const strokeColor = hasCollision ? "#cc0000" : "#00cc00";
-
   return (
     <Group
       ref={groupRef}
-      x={item.x}
-      y={item.y}
+      x={item.x + halfWidth}
+      y={item.y + halfDepth}
+      offsetX={halfWidth}
+      offsetY={halfDepth}
       draggable={true}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onWheel={handleWheel}
-      opacity={0.6}
     >
+      {/* Base furniture with selected color */}
       <Rect
         width={item.width}
         height={item.depth}
-        fill={fillColor}
-        stroke={strokeColor}
+        fill={item.color ?? DEFAULT_FURNITURE_COLOR}
+        stroke={DEFAULT_FURNITURE_STROKE}
         strokeWidth={4}
         cornerRadius={4}
         dash={[10, 5]}
@@ -454,6 +446,37 @@ function PendingFurnitureItem({
         fill="white"
         listening={false}
       />
+      {/* Collision areas in red */}
+      {collisionPolygons.map((polygon, index) => {
+        // Convert world coordinates to local coordinates (with rotation)
+        const rad = -degToRad(item.rotation);
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const points = polygon.flatMap((p) => {
+          const centerX = item.x + halfWidth;
+          const centerY = item.y + halfDepth;
+          const dx = p.x - centerX;
+          const dy = p.y - centerY;
+          const rotatedX = dx * cos - dy * sin;
+          const rotatedY = dx * sin + dy * cos;
+          const localX = rotatedX + halfWidth;
+          const localY = rotatedY + halfDepth;
+          return [localX, localY];
+        });
+
+        return (
+          <Line
+            key={index}
+            points={points}
+            fill="#ff0000"
+            stroke="#ff0000"
+            strokeWidth={3}
+            closed={true}
+            listening={false}
+          />
+        );
+      })}
     </Group>
   );
 }

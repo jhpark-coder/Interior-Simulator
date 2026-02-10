@@ -43,6 +43,7 @@ export type FurnitureItem = {
   depth: number;
   height: number;
   rotation: number;
+  color?: string;
   zIndex: number;
   locked: boolean;
 };

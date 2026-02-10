@@ -15,7 +15,6 @@ export function useAutoSave() {
       if (saved) {
         const data = JSON.parse(saved);
         importLayout(data);
-        console.log("Auto-save loaded from localStorage");
       }
     } catch (error) {
       console.error("Failed to load auto-save:", error);
@@ -28,7 +27,6 @@ export function useAutoSave() {
       try {
         const layout = exportLayout();
         localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(layout));
-        console.log("Auto-saved to localStorage");
       } catch (error) {
         console.error("Failed to auto-save:", error);
       }

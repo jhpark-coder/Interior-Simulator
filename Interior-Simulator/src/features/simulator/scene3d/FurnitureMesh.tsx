@@ -1,23 +1,15 @@
 import { useRef } from "react";
 import { Mesh } from "three";
 import type { FurnitureItem } from "../types";
+import { DEFAULT_FURNITURE_COLOR } from "../constants";
 
 type FurnitureMeshProps = {
   item: FurnitureItem;
 };
 
-const furnitureColors: Record<string, string> = {
-  bed: "#8B4513",
-  desk: "#D2691E",
-  chair: "#CD853F",
-  closet: "#A0522D",
-  sofa: "#BC8F8F",
-  table: "#DEB887",
-};
-
 export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const meshRef = useRef<Mesh>(null);
-  const color = furnitureColors[item.type] || "#808080";
+  const color = item.color ?? DEFAULT_FURNITURE_COLOR;
 
   // Convert 2D rotation (degrees) to 3D rotation (radians around Y axis)
   const rotationY = -(item.rotation * Math.PI) / 180;

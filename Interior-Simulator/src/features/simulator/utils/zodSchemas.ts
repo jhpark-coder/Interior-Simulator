@@ -44,6 +44,10 @@ export const FurnitureItemSchema = z.object({
   depth: z.number().min(100, "Furniture depth must be at least 100mm"),
   height: z.number().min(100, "Furniture height must be at least 100mm"),
   rotation: z.number(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Furniture color must be a 6-digit hex color")
+    .optional(),
   zIndex: z.number(),
   locked: z.boolean(),
 });
