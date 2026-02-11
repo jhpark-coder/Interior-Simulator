@@ -77,8 +77,10 @@ describe("openings utilities", () => {
       offset: 1000,
       width: 900,
       height: 2100,
+      doorType: "swing",
       hinge: "left",
       swing: "inward",
+      slideDirection: "right",
       openAngle: 90,
       thickness: 40,
     };

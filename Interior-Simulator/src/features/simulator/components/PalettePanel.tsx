@@ -1,8 +1,9 @@
 import "./PalettePanel.css";
 import { useState, useMemo, useEffect } from "react";
 import { searchItems, CATEGORY_LABELS } from "../constants";
-import type { CustomItemDefinition, ItemCategory, ItemDefinition, WallSide } from "../types";
+import type { CustomItemDefinition, FurnitureType, ItemCategory, ItemDefinition, WallSide } from "../types";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import { FURNITURE_CATALOG } from "../constants";
 
 const CUSTOM_ITEMS_KEY = "interior-simulator-custom-items";
 
@@ -21,6 +22,37 @@ const categoryOptions: { value: ItemCategory; label: string }[] = [
   { value: "electronics", label: "전자제품" },
   { value: "fixture", label: "설비" },
 ];
+
+const CATEGORY_TYPES: Record<ItemCategory, { type: FurnitureType; label: string }[]> = {
+  furniture: [
+    { type: "bed", label: "침대" },
+    { type: "desk", label: "책상" },
+    { type: "chair", label: "의자" },
+    { type: "closet", label: "수납장" },
+    { type: "sofa", label: "소파" },
+    { type: "table", label: "테이블" },
+  ],
+  appliance: [
+    { type: "refrigerator", label: "냉장고" },
+    { type: "washing-machine", label: "세탁기" },
+    { type: "dryer", label: "건조기" },
+    { type: "dishwasher", label: "식기세척기" },
+    { type: "oven", label: "오븐" },
+    { type: "microwave", label: "전자레인지" },
+  ],
+  electronics: [
+    { type: "tv", label: "TV" },
+    { type: "air-conditioner", label: "에어컨" },
+    { type: "air-purifier", label: "공기청정기" },
+    { type: "humidifier", label: "가습기" },
+  ],
+  fixture: [
+    { type: "sink", label: "싱크대" },
+    { type: "toilet", label: "변기" },
+    { type: "bathtub", label: "욕조" },
+    { type: "shower", label: "샤워부스" },
+  ],
+};
 
 function loadCustomItems(): CustomItemDefinition[] {
   try {
@@ -46,6 +78,7 @@ export function PalettePanel() {
   // Custom form state
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<ItemCategory>("furniture");
+  const [formType, setFormType] = useState<FurnitureType>("bed");
   const [formWidth, setFormWidth] = useState("");
   const [formDepth, setFormDepth] = useState("");
   const [formHeight, setFormHeight] = useState("");
@@ -94,7 +127,7 @@ export function PalettePanel() {
   };
 
   const handleSelectCustomItem = (item: CustomItemDefinition) => {
-    setPendingFurniture("custom", {
+    setPendingFurniture(item.type, {
       name: item.name,
       category: item.category,
       width: item.width,
@@ -110,6 +143,7 @@ export function PalettePanel() {
   const resetForm = () => {
     setFormName("");
     setFormCategory("furniture");
+    setFormType("bed");
     setFormWidth("");
     setFormDepth("");
     setFormHeight("");
@@ -129,6 +163,7 @@ export function PalettePanel() {
       id: `custom_${Date.now()}_${Math.random().toString(16).slice(2)}`,
       name: formName.trim(),
       category: formCategory,
+      type: formType,
       width,
       depth,
       height,
@@ -199,7 +234,7 @@ export function PalettePanel() {
                 >
                   <div style={{ fontWeight: 500 }}>{item.name}</div>
                   <div style={{ fontSize: "11px", color: "#666" }}>
-                    {CATEGORY_LABELS[item.category] || item.category} | {item.width}x{item.depth}x{item.height}mm
+                    {CATEGORY_LABELS[item.category] || item.category} &gt; {FURNITURE_CATALOG[item.type]?.label || item.type} | {item.width}x{item.depth}x{item.height}mm
                   </div>
                 </button>
                 <button
@@ -273,13 +308,42 @@ export function PalettePanel() {
               {categoryOptions.map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setFormCategory(opt.value)}
+                  onClick={() => {
+                    setFormCategory(opt.value);
+                    setFormType(CATEGORY_TYPES[opt.value][0].type);
+                  }}
                   style={{
                     padding: "0.35rem 0.5rem",
                     border: "1px solid #ccc",
                     borderRadius: "4px",
                     background: formCategory === opt.value ? "#7c5cbf" : "white",
                     color: formCategory === opt.value ? "white" : "#333",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sub-type */}
+          <div style={{ marginBottom: "0.5rem" }}>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "0.25rem" }}>
+              세부 종류
+            </label>
+            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+              {CATEGORY_TYPES[formCategory].map((opt) => (
+                <button
+                  key={opt.type}
+                  onClick={() => setFormType(opt.type)}
+                  style={{
+                    padding: "0.35rem 0.5rem",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    background: formType === opt.type ? "#5a9e6f" : "white",
+                    color: formType === opt.type ? "white" : "#333",
                     cursor: "pointer",
                     fontSize: "12px",
                   }}

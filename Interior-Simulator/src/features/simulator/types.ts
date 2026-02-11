@@ -40,6 +40,7 @@ export type CustomItemDefinition = {
   id: string;
   name: string;
   category: ItemCategory;
+  type: FurnitureType;
   width: number;
   depth: number;
   height: number;
