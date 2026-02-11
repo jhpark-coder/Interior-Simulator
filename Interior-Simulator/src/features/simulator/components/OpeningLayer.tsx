@@ -171,42 +171,43 @@ function DoorItem({ door, room, isSelected, onSelect, onUpdate }: DoorItemProps)
         strokeWidth={2}
       />
 
-      {/* Door panel */}
+      {/* Door panel (closed position) */}
       <Line
-        points={
-          isHorizontalWall
-            ? [0, 0, door.width, 0]
-            : [0, 0, 0, door.width]
-        }
+        points={[
+          arcData.hingeX,
+          arcData.hingeY,
+          arcData.hingeX + arcData.radius * Math.cos((arcData.closedAngle * Math.PI) / 180),
+          arcData.hingeY + arcData.radius * Math.sin((arcData.closedAngle * Math.PI) / 180),
+        ]}
         stroke={isSelected ? "#2E5C8A" : "#654321"}
         strokeWidth={door.thickness / 10}
       />
 
       {/* Door swing arc */}
       <Arc
-        x={arcData.centerX - pos.x}
-        y={arcData.centerY - pos.y}
+        x={arcData.hingeX}
+        y={arcData.hingeY}
         innerRadius={arcData.radius}
         outerRadius={arcData.radius}
-        angle={Math.abs(arcData.endAngle - arcData.startAngle)}
-        rotation={Math.min(arcData.startAngle, arcData.endAngle)}
+        angle={Math.abs(arcData.openAngle - arcData.closedAngle)}
+        rotation={Math.min(arcData.closedAngle, arcData.openAngle)}
         stroke={isSelected ? "#4A90E2" : "#6495ED"}
-        strokeWidth={2}
-        dash={[5, 5]}
+        strokeWidth={8}
+        dash={[15, 10]}
         listening={false}
       />
 
-      {/* Door swing end line */}
+      {/* Door swing end line (open position) */}
       <Line
         points={[
-          arcData.centerX - pos.x,
-          arcData.centerY - pos.y,
-          arcData.centerX - pos.x + arcData.radius * Math.cos((arcData.endAngle * Math.PI) / 180),
-          arcData.centerY - pos.y + arcData.radius * Math.sin((arcData.endAngle * Math.PI) / 180),
+          arcData.hingeX,
+          arcData.hingeY,
+          arcData.hingeX + arcData.radius * Math.cos((arcData.openAngle * Math.PI) / 180),
+          arcData.hingeY + arcData.radius * Math.sin((arcData.openAngle * Math.PI) / 180),
         ]}
         stroke={isSelected ? "#4A90E2" : "#6495ED"}
-        strokeWidth={1}
-        dash={[5, 5]}
+        strokeWidth={6}
+        dash={[15, 10]}
         listening={false}
       />
     </Group>

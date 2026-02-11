@@ -148,78 +148,58 @@ export function validateWindowPlacement(
 }
 
 /**
- * Calculates door arc points for visualization
+ * Calculates door arc data for visualization (in Group-local coordinates)
  */
 export function getDoorArcPoints(
   door: Door,
-  room: Room
-): { centerX: number; centerY: number; radius: number; startAngle: number; endAngle: number } {
-  const pos = getOpeningPosition(door.wall, door.offset, room);
-  const radius = door.width;
-
-  // Calculate hinge position
-  let hingeX = pos.x;
-  let hingeY = pos.y;
-
-  // Adjust hinge based on wall and hinge side
+  _room: Room
+): {
+  hingeX: number;
+  hingeY: number;
+  radius: number;
+  closedAngle: number;
+  openAngle: number;
+} {
   const isHorizontalWall = door.wall === "north" || door.wall === "south";
 
+  // 경첩의 로컬 좌표 (Group 기준)
+  let hingeX: number;
+  let hingeY: number;
+
   if (isHorizontalWall) {
-    hingeX += door.hinge === "left" ? 0 : door.width;
+    hingeX = door.hinge === "left" ? 0 : door.width;
+    hingeY = 0;
   } else {
-    hingeY += door.hinge === "left" ? 0 : door.width;
+    hingeX = 0;
+    hingeY = door.hinge === "left" ? 0 : door.width;
   }
 
-  // Calculate angles based on wall, swing, and hinge
-  let startAngle = 0;
-  let endAngle = door.openAngle;
-
-  switch (door.wall) {
-    case "north":
-      if (door.swing === "inward") {
-        // 안쪽(방 내부, 남쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 0 : 90;
-      } else {
-        // 바깥쪽(방 외부, 북쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 270 : 180;
-      }
-      break;
-    case "south":
-      if (door.swing === "inward") {
-        // 안쪽(방 내부, 북쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 180 : 270;
-      } else {
-        // 바깥쪽(방 외부, 남쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 90 : 0;
-      }
-      break;
-    case "east":
-      if (door.swing === "inward") {
-        // 안쪽(방 내부, 서쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 90 : 180;
-      } else {
-        // 바깥쪽(방 외부, 동쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 0 : 270;
-      }
-      break;
-    case "west":
-      if (door.swing === "inward") {
-        // 안쪽(방 내부, 동쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 270 : 0;
-      } else {
-        // 바깥쪽(방 외부, 서쪽 방향)으로 열림
-        startAngle = door.hinge === "left" ? 180 : 90;
-      }
-      break;
+  // 닫힌 상태에서의 각도 (경첩에서 문 끝 방향)
+  // 0°=오른쪽, 90°=아래, 180°=왼쪽, 270°=위
+  let closedAngle: number;
+  if (isHorizontalWall) {
+    closedAngle = door.hinge === "left" ? 0 : 180;
+  } else {
+    closedAngle = door.hinge === "left" ? 90 : 270;
   }
 
-  endAngle = startAngle + door.openAngle * (door.hinge === "left" ? 1 : -1);
+  // sweep 방향 결정
+  // inward일 때 양의 방향(시계)인 조합
+  const isPositiveSweepInward =
+    ((door.wall === "north" || door.wall === "east") && door.hinge === "left") ||
+    ((door.wall === "south" || door.wall === "west") && door.hinge === "right");
+
+  const sweepSign = door.swing === "inward"
+    ? (isPositiveSweepInward ? 1 : -1)
+    : (isPositiveSweepInward ? -1 : 1);
+
+  const openAngle = closedAngle + door.openAngle * sweepSign;
 
   return {
-    centerX: hingeX,
-    centerY: hingeY,
-    radius,
-    startAngle,
-    endAngle,
+    hingeX,
+    hingeY,
+    radius: door.width,
+    closedAngle,
+    openAngle,
   };
 }
