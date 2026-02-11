@@ -42,105 +42,347 @@ type PendingFurnitureItemProps = {
 
 const DEFAULT_FURNITURE_STROKE = "#a8a8a8";
 
-// Render type-specific markers
+// Helper function to adjust color brightness
+const adjustColor = (color: string, amount: number) => {
+  const hex = color.replace('#', '');
+  const rgb = parseInt(hex, 16);
+  const r = Math.max(0, Math.min(255, ((rgb >> 16) & 0xff) + amount));
+  const g = Math.max(0, Math.min(255, ((rgb >> 8) & 0xff) + amount));
+  const b = Math.max(0, Math.min(255, (rgb & 0xff) + amount));
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+// Render type-specific realistic furniture icons
 const renderFurnitureMarker = (item: FurnitureItem) => {
   const cx = item.width / 2;
   const cy = item.depth / 2;
+  const scale = Math.min(item.width, item.depth) / 100;
+  const baseColor = item.color ?? DEFAULT_FURNITURE_COLOR;
+  const darkColor = adjustColor(baseColor, -40);
+  const lightColor = adjustColor(baseColor, 40);
 
   switch (item.type) {
     case "bed":
-      // Pillow indicator
-      return (
-        <Rect
-          x={item.width * 0.1}
-          y={item.depth * 0.1}
-          width={item.width * 0.8}
-          height={item.depth * 0.25}
-          fill="rgba(255, 255, 255, 0.3)"
-          cornerRadius={8}
-          listening={false}
-        />
-      );
-    case "desk":
-      // Drawers
+      // Realistic bed with headboard and pillow
       return (
         <>
+          {/* Headboard */}
           <Rect
-            x={item.width * 0.7}
-            y={item.depth * 0.2}
-            width={item.width * 0.2}
-            height={item.depth * 0.2}
-            stroke="rgba(255, 255, 255, 0.6)"
-            strokeWidth={2}
+            x={item.width * 0.05}
+            y={item.depth * 0.05}
+            width={item.width * 0.9}
+            height={item.depth * 0.15}
+            fill={darkColor}
+            cornerRadius={6}
             listening={false}
           />
+          {/* Mattress */}
           <Rect
-            x={item.width * 0.7}
-            y={item.depth * 0.5}
-            width={item.width * 0.2}
-            height={item.depth * 0.2}
-            stroke="rgba(255, 255, 255, 0.6)"
+            x={item.width * 0.05}
+            y={item.depth * 0.2}
+            width={item.width * 0.9}
+            height={item.depth * 0.7}
+            fill={baseColor}
+            stroke={darkColor}
             strokeWidth={2}
+            cornerRadius={4}
+            listening={false}
+          />
+          {/* Pillow */}
+          <Rect
+            x={item.width * 0.15}
+            y={item.depth * 0.25}
+            width={item.width * 0.7}
+            height={item.depth * 0.2}
+            fill={lightColor}
+            cornerRadius={8}
+            listening={false}
+          />
+        </>
+      );
+    case "desk":
+      // Realistic desk with drawers
+      return (
+        <>
+          {/* Desktop */}
+          <Rect
+            x={item.width * 0.05}
+            y={item.depth * 0.15}
+            width={item.width * 0.9}
+            height={item.depth * 0.7}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={3}
+            listening={false}
+          />
+          {/* Left drawer */}
+          <Rect
+            x={item.width * 0.1}
+            y={item.depth * 0.3}
+            width={item.width * 0.25}
+            height={item.depth * 0.2}
+            fill={lightColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={2}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.225}
+            y={item.depth * 0.4}
+            radius={scale * 3}
+            fill={darkColor}
+            listening={false}
+          />
+          {/* Right drawer */}
+          <Rect
+            x={item.width * 0.65}
+            y={item.depth * 0.3}
+            width={item.width * 0.25}
+            height={item.depth * 0.2}
+            fill={lightColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={2}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.775}
+            y={item.depth * 0.4}
+            radius={scale * 3}
+            fill={darkColor}
             listening={false}
           />
         </>
       );
     case "chair":
-      // Seat back
-      return (
-        <Rect
-          x={item.width * 0.2}
-          y={item.depth * 0.05}
-          width={item.width * 0.6}
-          height={item.depth * 0.15}
-          fill="rgba(255, 255, 255, 0.4)"
-          cornerRadius={4}
-          listening={false}
-        />
-      );
-    case "closet":
-      // Door line
-      return (
-        <Line
-          points={[cx, item.depth * 0.1, cx, item.depth * 0.9]}
-          stroke="rgba(255, 255, 255, 0.6)"
-          strokeWidth={2}
-          listening={false}
-        />
-      );
-    case "sofa":
-      // Cushions
+      // Realistic chair with backrest and seat
       return (
         <>
+          {/* Backrest */}
+          <Rect
+            x={item.width * 0.15}
+            y={item.depth * 0.05}
+            width={item.width * 0.7}
+            height={item.depth * 0.2}
+            fill={darkColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={6}
+            listening={false}
+          />
+          {/* Seat */}
+          <Rect
+            x={item.width * 0.1}
+            y={item.depth * 0.25}
+            width={item.width * 0.8}
+            height={item.depth * 0.5}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={4}
+            listening={false}
+          />
+          {/* Front legs indication */}
           <Circle
             x={item.width * 0.25}
-            y={cy}
-            radius={Math.min(item.width, item.depth) * 0.15}
-            fill="rgba(255, 255, 255, 0.3)"
+            y={item.depth * 0.8}
+            radius={scale * 4}
+            fill={darkColor}
             listening={false}
           />
           <Circle
             x={item.width * 0.75}
+            y={item.depth * 0.8}
+            radius={scale * 4}
+            fill={darkColor}
+            listening={false}
+          />
+        </>
+      );
+    case "closet":
+      // Realistic closet with doors
+      return (
+        <>
+          {/* Body */}
+          <Rect
+            x={item.width * 0.05}
+            y={item.depth * 0.05}
+            width={item.width * 0.9}
+            height={item.depth * 0.9}
+            fill={darkColor}
+            stroke={darkColor}
+            strokeWidth={3}
+            cornerRadius={3}
+            listening={false}
+          />
+          {/* Left door */}
+          <Rect
+            x={item.width * 0.08}
+            y={item.depth * 0.1}
+            width={item.width * 0.4}
+            height={item.depth * 0.8}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={2}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.42}
             y={cy}
-            radius={Math.min(item.width, item.depth) * 0.15}
-            fill="rgba(255, 255, 255, 0.3)"
+            radius={scale * 3}
+            fill={lightColor}
+            listening={false}
+          />
+          {/* Right door */}
+          <Rect
+            x={item.width * 0.52}
+            y={item.depth * 0.1}
+            width={item.width * 0.4}
+            height={item.depth * 0.8}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={2}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.58}
+            y={cy}
+            radius={scale * 3}
+            fill={lightColor}
+            listening={false}
+          />
+        </>
+      );
+    case "sofa":
+      // Realistic sofa with cushions and armrests
+      return (
+        <>
+          {/* Base */}
+          <Rect
+            x={item.width * 0.08}
+            y={item.depth * 0.3}
+            width={item.width * 0.84}
+            height={item.depth * 0.6}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={6}
+            listening={false}
+          />
+          {/* Backrest */}
+          <Rect
+            x={item.width * 0.08}
+            y={item.depth * 0.1}
+            width={item.width * 0.84}
+            height={item.depth * 0.25}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={8}
+            listening={false}
+          />
+          {/* Left armrest */}
+          <Rect
+            x={item.width * 0.03}
+            y={item.depth * 0.15}
+            width={item.width * 0.1}
+            height={item.depth * 0.7}
+            fill={darkColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={4}
+            listening={false}
+          />
+          {/* Right armrest */}
+          <Rect
+            x={item.width * 0.87}
+            y={item.depth * 0.15}
+            width={item.width * 0.1}
+            height={item.depth * 0.7}
+            fill={darkColor}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={4}
+            listening={false}
+          />
+          {/* Cushions */}
+          <Circle
+            x={item.width * 0.3}
+            y={item.depth * 0.5}
+            radius={Math.min(item.width, item.depth) * 0.12}
+            fill={lightColor}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.7}
+            y={item.depth * 0.5}
+            radius={Math.min(item.width, item.depth) * 0.12}
+            fill={lightColor}
             listening={false}
           />
         </>
       );
     case "table":
-      // Table top outline
+      // Realistic table with legs
       return (
-        <Rect
-          x={item.width * 0.1}
-          y={item.depth * 0.1}
-          width={item.width * 0.8}
-          height={item.depth * 0.8}
-          stroke="rgba(255, 255, 255, 0.5)"
-          strokeWidth={2}
-          cornerRadius={4}
-          listening={false}
-        />
+        <>
+          {/* Tabletop */}
+          <Rect
+            x={item.width * 0.05}
+            y={item.depth * 0.05}
+            width={item.width * 0.9}
+            height={item.depth * 0.9}
+            fill={baseColor}
+            stroke={darkColor}
+            strokeWidth={3}
+            cornerRadius={6}
+            listening={false}
+          />
+          {/* Inner panel for depth effect */}
+          <Rect
+            x={item.width * 0.1}
+            y={item.depth * 0.1}
+            width={item.width * 0.8}
+            height={item.depth * 0.8}
+            stroke={darkColor}
+            strokeWidth={2}
+            cornerRadius={4}
+            listening={false}
+          />
+          {/* Table legs */}
+          <Circle
+            x={item.width * 0.15}
+            y={item.depth * 0.15}
+            radius={scale * 5}
+            fill={darkColor}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.85}
+            y={item.depth * 0.15}
+            radius={scale * 5}
+            fill={darkColor}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.15}
+            y={item.depth * 0.85}
+            radius={scale * 5}
+            fill={darkColor}
+            listening={false}
+          />
+          <Circle
+            x={item.width * 0.85}
+            y={item.depth * 0.85}
+            radius={scale * 5}
+            fill={darkColor}
+            listening={false}
+          />
+        </>
       );
     default:
       return null;
@@ -321,7 +563,7 @@ function FurnitureItem({
       <Rect
         width={item.width}
         height={item.depth}
-        fill={item.color ?? DEFAULT_FURNITURE_COLOR}
+        fill="transparent"
         stroke={isSelected ? "#4A90E2" : DEFAULT_FURNITURE_STROKE}
         strokeWidth={isSelected ? 4 : 2}
         cornerRadius={4}
@@ -438,7 +680,7 @@ function PendingFurnitureItem({
       <Rect
         width={item.width}
         height={item.depth}
-        fill={item.color ?? DEFAULT_FURNITURE_COLOR}
+        fill="transparent"
         stroke="#3b82f6"
         strokeWidth={12}
         cornerRadius={4}
@@ -446,7 +688,6 @@ function PendingFurnitureItem({
         shadowColor="#3b82f6"
         shadowBlur={20}
         shadowOpacity={0.8}
-        opacity={0.85}
       />
       {/* Type-specific visual markers */}
       {renderFurnitureMarker(item as FurnitureItem)}
