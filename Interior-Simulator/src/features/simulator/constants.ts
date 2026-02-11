@@ -552,8 +552,10 @@ export const FURNITURE_PRESETS: FurniturePreset[] = ITEM_CATALOG.map((item) => (
 export const DEFAULT_DOOR: Omit<Door, "id" | "wall" | "offset"> = {
   width: 900,
   height: 2100,
+  doorType: "swing",
   hinge: "left",
   swing: "inward",
+  slideDirection: "right",
   openAngle: 90,
   thickness: 40,
 };

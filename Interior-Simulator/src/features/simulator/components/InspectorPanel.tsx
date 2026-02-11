@@ -301,6 +301,41 @@ export function InspectorPanel() {
             <p className="panel-kicker">추가 대기 중</p>
             <h2 className="panel-title">{wallLabels[pendingDoor.wall]} 벽의 문</h2>
           </div>
+          <div style={{ marginTop: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem" }}>
+              <span>문 타입:</span>
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => updatePendingDoor({ doorType: "swing" })}
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: pendingDoor.doorType === "swing" ? "#4A90E2" : "#ddd",
+                  color: pendingDoor.doorType === "swing" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                여닫이문
+              </button>
+              <button
+                onClick={() => updatePendingDoor({ doorType: "sliding" })}
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: pendingDoor.doorType === "sliding" ? "#4A90E2" : "#ddd",
+                  color: pendingDoor.doorType === "sliding" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                미닫이문
+              </button>
+            </div>
+          </div>
           <div className="inspector-grid">
             {numberField("위치 (mm)", Math.round(pendingDoor.offset), (next) =>
               updatePendingDoor({ offset: next })
@@ -311,80 +346,121 @@ export function InspectorPanel() {
             {numberField("높이 (mm)", pendingDoor.height, (next) =>
               updatePendingDoor({ height: Math.max(next, 1800) })
             )}
-            {numberField("개폐 각도 (도)", pendingDoor.openAngle, (next) =>
+            {pendingDoor.doorType === "swing" && numberField("개폐 각도 (도)", pendingDoor.openAngle, (next) =>
               updatePendingDoor({ openAngle: Math.max(0, Math.min(120, next)) })
             )}
           </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem" }}>
-              <span>경첩:</span>
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => updatePendingDoor({ hinge: "left" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: pendingDoor.hinge === "left" ? "#4A90E2" : "#ddd",
-                  color: pendingDoor.hinge === "left" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                왼쪽
-              </button>
-              <button
-                onClick={() => updatePendingDoor({ hinge: "right" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: pendingDoor.hinge === "right" ? "#4A90E2" : "#ddd",
-                  color: pendingDoor.hinge === "right" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                오른쪽
-              </button>
+          {pendingDoor.doorType === "swing" && (
+            <>
+              <div style={{ marginTop: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                  <span>경첩:</span>
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => updatePendingDoor({ hinge: "left" })}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: pendingDoor.hinge === "left" ? "#4A90E2" : "#ddd",
+                      color: pendingDoor.hinge === "left" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    왼쪽
+                  </button>
+                  <button
+                    onClick={() => updatePendingDoor({ hinge: "right" })}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: pendingDoor.hinge === "right" ? "#4A90E2" : "#ddd",
+                      color: pendingDoor.hinge === "right" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    오른쪽
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginTop: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                  <span>열림 방향:</span>
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => updatePendingDoor({ swing: "inward" })}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: pendingDoor.swing === "inward" ? "#4A90E2" : "#ddd",
+                      color: pendingDoor.swing === "inward" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    안쪽
+                  </button>
+                  <button
+                    onClick={() => updatePendingDoor({ swing: "outward" })}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: pendingDoor.swing === "outward" ? "#4A90E2" : "#ddd",
+                      color: pendingDoor.swing === "outward" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    바깥쪽
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {pendingDoor.doorType === "sliding" && (
+            <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                <span>슬라이드 방향:</span>
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => updatePendingDoor({ slideDirection: "left" })}
+                  style={{
+                    flex: 1,
+                    padding: "0.5rem",
+                    background: pendingDoor.slideDirection === "left" ? "#4A90E2" : "#ddd",
+                    color: pendingDoor.slideDirection === "left" ? "white" : "#333",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  왼쪽
+                </button>
+                <button
+                  onClick={() => updatePendingDoor({ slideDirection: "right" })}
+                  style={{
+                    flex: 1,
+                    padding: "0.5rem",
+                    background: pendingDoor.slideDirection === "right" ? "#4A90E2" : "#ddd",
+                    color: pendingDoor.slideDirection === "right" ? "white" : "#333",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  오른쪽
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem" }}>
-              <span>열림 방향:</span>
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => updatePendingDoor({ swing: "inward" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: pendingDoor.swing === "inward" ? "#4A90E2" : "#ddd",
-                  color: pendingDoor.swing === "inward" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                안쪽
-              </button>
-              <button
-                onClick={() => updatePendingDoor({ swing: "outward" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: pendingDoor.swing === "outward" ? "#4A90E2" : "#ddd",
-                  color: pendingDoor.swing === "outward" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                바깥쪽
-              </button>
-            </div>
-          </div>
+          )}
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
             <button
               onClick={commitPendingDoor}
@@ -615,6 +691,47 @@ export function InspectorPanel() {
             <p className="panel-kicker">선택됨</p>
             <h2 className="panel-title">{wallLabels[selectedDoor.wall]} 벽의 문</h2>
           </div>
+          <div style={{ marginTop: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem" }}>
+              <span>문 타입:</span>
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => {
+                  updateDoor(selectedDoor.id, { doorType: "swing" });
+                  commitHistory();
+                }}
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: selectedDoor.doorType === "swing" ? "#4A90E2" : "#ddd",
+                  color: selectedDoor.doorType === "swing" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                여닫이문
+              </button>
+              <button
+                onClick={() => {
+                  updateDoor(selectedDoor.id, { doorType: "sliding" });
+                  commitHistory();
+                }}
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: selectedDoor.doorType === "sliding" ? "#4A90E2" : "#ddd",
+                  color: selectedDoor.doorType === "sliding" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                미닫이문
+              </button>
+            </div>
+          </div>
           <div className="inspector-grid">
             {numberField("위치 (mm)", Math.round(selectedDoor.offset), (next) => {
               updateDoor(selectedDoor.id, { offset: next });
@@ -628,84 +745,143 @@ export function InspectorPanel() {
               updateDoor(selectedDoor.id, { height: Math.max(next, 1800) });
               commitHistory();
             })}
-            {numberField("개폐 각도 (도)", selectedDoor.openAngle, (next) => {
+            {selectedDoor.doorType === "swing" && numberField("개폐 각도 (도)", selectedDoor.openAngle, (next) => {
               updateDoor(selectedDoor.id, {
                 openAngle: Math.max(0, Math.min(120, next)),
               });
             })}
           </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem" }}>
-              <span>경첩:</span>
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => updateDoor(selectedDoor.id, { hinge: "left" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: selectedDoor.hinge === "left" ? "#4A90E2" : "#ddd",
-                  color: selectedDoor.hinge === "left" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                왼쪽
-              </button>
-              <button
-                onClick={() => updateDoor(selectedDoor.id, { hinge: "right" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background: selectedDoor.hinge === "right" ? "#4A90E2" : "#ddd",
-                  color: selectedDoor.hinge === "right" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                오른쪽
-              </button>
+          {selectedDoor.doorType === "swing" && (
+            <>
+              <div style={{ marginTop: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                  <span>경첩:</span>
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => {
+                      updateDoor(selectedDoor.id, { hinge: "left" });
+                      commitHistory();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: selectedDoor.hinge === "left" ? "#4A90E2" : "#ddd",
+                      color: selectedDoor.hinge === "left" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    왼쪽
+                  </button>
+                  <button
+                    onClick={() => {
+                      updateDoor(selectedDoor.id, { hinge: "right" });
+                      commitHistory();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background: selectedDoor.hinge === "right" ? "#4A90E2" : "#ddd",
+                      color: selectedDoor.hinge === "right" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    오른쪽
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginTop: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                  <span>열림 방향:</span>
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => {
+                      updateDoor(selectedDoor.id, { swing: "inward" });
+                      commitHistory();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background:
+                        selectedDoor.swing === "inward" ? "#4A90E2" : "#ddd",
+                      color: selectedDoor.swing === "inward" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    안쪽
+                  </button>
+                  <button
+                    onClick={() => {
+                      updateDoor(selectedDoor.id, { swing: "outward" });
+                      commitHistory();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      background:
+                        selectedDoor.swing === "outward" ? "#4A90E2" : "#ddd",
+                      color: selectedDoor.swing === "outward" ? "white" : "#333",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    바깥쪽
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {selectedDoor.doorType === "sliding" && (
+            <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                <span>슬라이드 방향:</span>
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => {
+                    updateDoor(selectedDoor.id, { slideDirection: "left" });
+                    commitHistory();
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "0.5rem",
+                    background: selectedDoor.slideDirection === "left" ? "#4A90E2" : "#ddd",
+                    color: selectedDoor.slideDirection === "left" ? "white" : "#333",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  왼쪽
+                </button>
+                <button
+                  onClick={() => {
+                    updateDoor(selectedDoor.id, { slideDirection: "right" });
+                    commitHistory();
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "0.5rem",
+                    background: selectedDoor.slideDirection === "right" ? "#4A90E2" : "#ddd",
+                    color: selectedDoor.slideDirection === "right" ? "white" : "#333",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  오른쪽
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem" }}>
-              <span>열림 방향:</span>
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => updateDoor(selectedDoor.id, { swing: "inward" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background:
-                    selectedDoor.swing === "inward" ? "#4A90E2" : "#ddd",
-                  color: selectedDoor.swing === "inward" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                안쪽
-              </button>
-              <button
-                onClick={() => updateDoor(selectedDoor.id, { swing: "outward" })}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  background:
-                    selectedDoor.swing === "outward" ? "#4A90E2" : "#ddd",
-                  color: selectedDoor.swing === "outward" ? "white" : "#333",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                바깥쪽
-              </button>
-            </div>
-          </div>
+          )}
           <button
             className="inspector-delete"
             onClick={() => removeDoor(selectedDoor.id)}

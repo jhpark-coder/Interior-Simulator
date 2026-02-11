@@ -61,7 +61,6 @@ type DoorItemProps = {
 
 function DoorItem({ door, room, isSelected, onSelect, onUpdate }: DoorItemProps) {
   const pos = getOpeningPosition(door.wall, door.offset, room);
-  const arcData = getDoorArcPoints(door, room);
   const isHorizontalWall = door.wall === "north" || door.wall === "south";
 
   const handleClick = () => {
@@ -82,6 +81,74 @@ function DoorItem({ door, room, isSelected, onSelect, onUpdate }: DoorItemProps)
   const handleDragEnd = () => {
     useSimulatorStore.getState().commitHistory();
   };
+
+  if (door.doorType === "sliding") {
+    // Sliding door rendering
+    const slideOffset = door.slideDirection === "right" ? door.width * 0.6 : -door.width * 0.6;
+
+    return (
+      <Group
+        x={pos.x}
+        y={pos.y}
+        draggable
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+        onClick={handleClick}
+        onTap={handleClick}
+      >
+        {/* Door opening (gap in wall) */}
+        <Rect
+          x={0}
+          y={isHorizontalWall ? -room.wallThickness : 0}
+          width={isHorizontalWall ? door.width : room.wallThickness}
+          height={isHorizontalWall ? room.wallThickness : door.width}
+          fill={isSelected ? "#FFD700" : "#f5f5f5"}
+          stroke={isSelected ? "#FFA500" : "#888"}
+          strokeWidth={2}
+        />
+
+        {/* Sliding door panel (closed position) */}
+        <Rect
+          x={isHorizontalWall ? 0 : -door.thickness / 2}
+          y={isHorizontalWall ? -door.thickness / 2 : 0}
+          width={isHorizontalWall ? door.width : door.thickness}
+          height={isHorizontalWall ? door.thickness : door.width}
+          fill={isSelected ? "#8B4513" : "#654321"}
+          stroke={isSelected ? "#2E5C8A" : "#444"}
+          strokeWidth={2}
+        />
+
+        {/* Sliding door panel (open position - ghost) */}
+        <Rect
+          x={isHorizontalWall ? slideOffset : -door.thickness / 2}
+          y={isHorizontalWall ? -door.thickness / 2 : slideOffset}
+          width={isHorizontalWall ? door.width : door.thickness}
+          height={isHorizontalWall ? door.thickness : door.width}
+          fill={isSelected ? "rgba(139, 69, 19, 0.3)" : "rgba(101, 67, 33, 0.3)"}
+          stroke={isSelected ? "#4A90E2" : "#888"}
+          strokeWidth={1}
+          dash={[5, 5]}
+          listening={false}
+        />
+
+        {/* Slide direction arrow */}
+        <Line
+          points={
+            isHorizontalWall
+              ? [door.width / 2, door.thickness, door.width / 2 + slideOffset * 0.3, door.thickness]
+              : [door.thickness, door.width / 2, door.thickness, door.width / 2 + slideOffset * 0.3]
+          }
+          stroke={isSelected ? "#4A90E2" : "#6495ED"}
+          strokeWidth={2}
+          dash={[3, 3]}
+          listening={false}
+        />
+      </Group>
+    );
+  }
+
+  // Swing door rendering
+  const arcData = getDoorArcPoints(door, room);
 
   return (
     <Group

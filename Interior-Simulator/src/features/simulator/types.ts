@@ -1,7 +1,9 @@
 ﻿export type Unit = "mm" | "cm";
 export type WallSide = "north" | "east" | "south" | "west";
+export type DoorType = "swing" | "sliding";
 export type DoorHinge = "left" | "right";
 export type DoorSwing = "inward" | "outward";
+export type DoorSlideDirection = "left" | "right";
 export type ViewMode = "2d" | "3d" | "split";
 export type DimensionHorizontalSide = "top" | "bottom";
 export type DimensionVerticalSide = "left" | "right";
@@ -67,8 +69,10 @@ export type Door = {
   offset: number;
   width: number;
   height: number;
+  doorType: DoorType;
   hinge: DoorHinge;
   swing: DoorSwing;
+  slideDirection: DoorSlideDirection;
   openAngle: number;
   thickness: number;
 };
