@@ -99,7 +99,7 @@ const FURNITURE_COLLISION_ERROR =
 type PendingFurniturePreset = Partial<
   Pick<
     PendingFurniture,
-    "name" | "width" | "depth" | "height" | "rotation" | "locked" | "color"
+    "name" | "category" | "width" | "depth" | "height" | "rotation" | "locked" | "color"
   >
 >;
 
@@ -211,9 +211,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     const baseX = room.width / 2 - width / 2;
     const baseY = room.height / 2 - depth / 2;
 
-    // Determine category based on type
+    // Determine category: use preset.category if provided, otherwise infer from type
     let category: "furniture" | "appliance" | "electronics" | "fixture" = "furniture";
-    if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
+    if (preset?.category) {
+      category = preset.category;
+    } else if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
       category = "appliance";
     } else if (["tv", "air-conditioner", "air-purifier", "humidifier"].includes(type)) {
       category = "electronics";

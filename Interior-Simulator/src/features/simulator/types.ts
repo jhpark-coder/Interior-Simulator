@@ -32,7 +32,21 @@ export type FurnitureType =
   // Electronics
   | "tv" | "air-conditioner" | "air-purifier" | "humidifier"
   // Fixtures
-  | "sink" | "toilet" | "bathtub" | "shower";
+  | "sink" | "toilet" | "bathtub" | "shower"
+  // Custom
+  | "custom";
+
+export type CustomItemDefinition = {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  width: number;
+  depth: number;
+  height: number;
+  innerWidth?: number;
+  innerDepth?: number;
+  innerHeight?: number;
+};
 
 export type FurnitureItem = {
   id: string;

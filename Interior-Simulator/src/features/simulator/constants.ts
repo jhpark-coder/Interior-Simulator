@@ -37,6 +37,7 @@ export const FURNITURE_CATALOG: Record<
   toilet: { label: "변기", width: 500, depth: 700, height: 400 },
   bathtub: { label: "욕조", width: 1600, depth: 800, height: 600 },
   shower: { label: "샤워부스", width: 900, depth: 900, height: 2100 },
+  custom: { label: "커스텀", width: 500, depth: 500, height: 500 },
 };
 
 // New unified item catalog with search support
@@ -592,4 +593,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
   appliance: "가전제품",
   electronics: "전자제품",
   fixture: "설비",
+  custom: "나의 가구",
 };
