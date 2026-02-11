@@ -177,30 +177,38 @@ export function getDoorArcPoints(
   switch (door.wall) {
     case "north":
       if (door.swing === "inward") {
-        startAngle = door.hinge === "left" ? 270 : 180;
-      } else {
+        // 안쪽(방 내부, 남쪽 방향)으로 열림
         startAngle = door.hinge === "left" ? 0 : 90;
+      } else {
+        // 바깥쪽(방 외부, 북쪽 방향)으로 열림
+        startAngle = door.hinge === "left" ? 270 : 180;
       }
       break;
     case "south":
       if (door.swing === "inward") {
-        startAngle = door.hinge === "left" ? 90 : 0;
-      } else {
+        // 안쪽(방 내부, 북쪽 방향)으로 열림
         startAngle = door.hinge === "left" ? 180 : 270;
+      } else {
+        // 바깥쪽(방 외부, 남쪽 방향)으로 열림
+        startAngle = door.hinge === "left" ? 90 : 0;
       }
       break;
     case "east":
       if (door.swing === "inward") {
-        startAngle = door.hinge === "left" ? 0 : 270;
-      } else {
+        // 안쪽(방 내부, 서쪽 방향)으로 열림
         startAngle = door.hinge === "left" ? 90 : 180;
+      } else {
+        // 바깥쪽(방 외부, 동쪽 방향)으로 열림
+        startAngle = door.hinge === "left" ? 0 : 270;
       }
       break;
     case "west":
       if (door.swing === "inward") {
-        startAngle = door.hinge === "left" ? 180 : 90;
-      } else {
+        // 안쪽(방 내부, 동쪽 방향)으로 열림
         startAngle = door.hinge === "left" ? 270 : 0;
+      } else {
+        // 바깥쪽(방 외부, 서쪽 방향)으로 열림
+        startAngle = door.hinge === "left" ? 180 : 90;
       }
       break;
   }
