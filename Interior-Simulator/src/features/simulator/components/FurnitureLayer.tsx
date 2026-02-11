@@ -423,15 +423,30 @@ function PendingFurnitureItem({
       onDragEnd={handleDragEnd}
       onWheel={handleWheel}
     >
+      {/* Outer highlight border */}
+      <Rect
+        width={item.width}
+        height={item.depth}
+        stroke="#3b82f6"
+        strokeWidth={20}
+        cornerRadius={4}
+        dash={[30, 15]}
+        opacity={0.3}
+        listening={false}
+      />
       {/* Base furniture with selected color */}
       <Rect
         width={item.width}
         height={item.depth}
         fill={item.color ?? DEFAULT_FURNITURE_COLOR}
-        stroke={DEFAULT_FURNITURE_STROKE}
-        strokeWidth={4}
+        stroke="#3b82f6"
+        strokeWidth={12}
         cornerRadius={4}
-        dash={[10, 5]}
+        dash={[25, 15]}
+        shadowColor="#3b82f6"
+        shadowBlur={20}
+        shadowOpacity={0.8}
+        opacity={0.85}
       />
       {/* Type-specific visual markers */}
       {renderFurnitureMarker(item as FurnitureItem)}
