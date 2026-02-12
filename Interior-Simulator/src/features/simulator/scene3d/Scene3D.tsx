@@ -23,11 +23,11 @@ export function Scene3D() {
             room.height * 1.5,
           ],
           fov: 50,
-          near: 0.1,
-          far: 20000,
+          near: 10,
+          far: 50000,
         }}
         shadows
-        gl={{ antialias: true, alpha: false }}
+        gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: true }}
       >
         <color attach="background" args={["#2a2a2a"]} />
 

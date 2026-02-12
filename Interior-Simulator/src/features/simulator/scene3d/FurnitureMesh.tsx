@@ -287,7 +287,6 @@ function DisplayCabinetMesh({
         <mesh
           key={`shelf-${i}`}
           position={[0, baseH + shelfSpacing * i, 0]}
-          renderOrder={1}
         >
           <boxGeometry
             args={[
@@ -296,11 +295,12 @@ function DisplayCabinetMesh({
               depth - frameSize * 2 - 4,
             ]}
           />
-          <meshStandardMaterial
-            color="#b8d4e3"
-            transparent
-            opacity={0.4}
-            depthWrite={false}
+          <meshPhysicalMaterial
+            color="#d4eaf5"
+            metalness={0.1}
+            roughness={0.15}
+            clearcoat={1}
+            clearcoatRoughness={0.05}
           />
         </mesh>
       ))}
@@ -309,61 +309,57 @@ function DisplayCabinetMesh({
       {/* Front */}
       <mesh
         position={[0, innerCenterY, depth / 2 - frameSize / 2]}
-        renderOrder={2}
       >
         <boxGeometry
           args={[width - frameSize * 2 - 4, innerH - 4, panelThick]}
         />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color="#cce8f4"
-          transparent
-          opacity={0.15}
-          depthWrite={false}
+          transmission={0.85}
+          roughness={0.05}
+          thickness={panelThick}
         />
       </mesh>
       {/* Back */}
       <mesh
         position={[0, innerCenterY, -depth / 2 + frameSize / 2]}
-        renderOrder={2}
       >
         <boxGeometry
           args={[width - frameSize * 2 - 4, innerH - 4, panelThick]}
         />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color="#cce8f4"
-          transparent
-          opacity={0.15}
-          depthWrite={false}
+          transmission={0.85}
+          roughness={0.05}
+          thickness={panelThick}
         />
       </mesh>
       {/* Left */}
       <mesh
         position={[-width / 2 + frameSize / 2, innerCenterY, 0]}
-        renderOrder={2}
       >
         <boxGeometry
           args={[panelThick, innerH - 4, depth - frameSize * 2 - 4]}
         />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color="#cce8f4"
-          transparent
-          opacity={0.15}
-          depthWrite={false}
+          transmission={0.85}
+          roughness={0.05}
+          thickness={panelThick}
         />
       </mesh>
       {/* Right */}
       <mesh
         position={[width / 2 - frameSize / 2, innerCenterY, 0]}
-        renderOrder={2}
       >
         <boxGeometry
           args={[panelThick, innerH - 4, depth - frameSize * 2 - 4]}
         />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color="#cce8f4"
-          transparent
-          opacity={0.15}
-          depthWrite={false}
+          transmission={0.85}
+          roughness={0.05}
+          thickness={panelThick}
         />
       </mesh>
     </>
