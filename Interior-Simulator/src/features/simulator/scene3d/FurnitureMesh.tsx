@@ -4,6 +4,7 @@ import { Group } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import type { FurnitureItem } from "../types";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
+import { useSimulatorStore } from "../store/useSimulatorStore";
 
 type FurnitureMeshProps = {
   item: FurnitureItem;
@@ -370,17 +371,134 @@ function DisplayCabinetMesh({
   );
 }
 
+function checkClosetDoorCollision(
+  angle: number,
+  hingeLocalX: number,
+  hingeLocalZ: number,
+  doorWidth: number,
+  hingeDir: number,
+  doorHalfT: number,
+  centerX: number,
+  centerZ: number,
+  cosItem: number,
+  sinItem: number,
+  roomWidth: number,
+  roomDepth: number,
+  furniture: FurnitureItem[],
+  selfId: string,
+): boolean {
+  const wallMargin = 5;
+  const furnitureMargin = 15;
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  const zLines = [-doorHalfT, 0, doorHalfT];
+
+  for (const dz of zLines) {
+    for (let s = 1; s <= 10; s++) {
+      const r = (doorWidth * s) / 10;
+      const rx = hingeDir * r * cosA + dz * sinA;
+      const rz = -(hingeDir * r) * sinA + dz * cosA;
+      const lx = hingeLocalX + rx;
+      const lz = hingeLocalZ + rz;
+      const wx = centerX + lx * cosItem + lz * sinItem;
+      const wz = centerZ - lx * sinItem + lz * cosItem;
+
+      if (
+        wx < wallMargin ||
+        wx > roomWidth - wallMargin ||
+        wz < wallMargin ||
+        wz > roomDepth - wallMargin
+      ) {
+        return true;
+      }
+
+      for (const f of furniture) {
+        if (f.id === selfId) continue;
+        const dx = wx - (f.x + f.width / 2);
+        const dz2 = wz - (f.y + f.depth / 2);
+        const fRot = (f.rotation * Math.PI) / 180;
+        const cosR = Math.cos(fRot);
+        const sinR = Math.sin(fRot);
+        const flx = dx * cosR + dz2 * sinR;
+        const flz = -dx * sinR + dz2 * cosR;
+        if (
+          Math.abs(flx) <= f.width / 2 + furnitureMargin &&
+          Math.abs(flz) <= f.depth / 2 + furnitureMargin
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function checkClosetDrawerCollision(
+  slideOffset: number,
+  frontLocalZ: number,
+  drawerWidth: number,
+  centerX: number,
+  centerZ: number,
+  cosItem: number,
+  sinItem: number,
+  roomWidth: number,
+  roomDepth: number,
+  furniture: FurnitureItem[],
+  selfId: string,
+): boolean {
+  const wallMargin = 5;
+  const furnitureMargin = 15;
+  const lz = frontLocalZ + slideOffset;
+
+  for (let s = 0; s <= 10; s++) {
+    const lx = (s / 10 - 0.5) * drawerWidth;
+    const wx = centerX + lx * cosItem + lz * sinItem;
+    const wz = centerZ - lx * sinItem + lz * cosItem;
+
+    if (
+      wx < wallMargin ||
+      wx > roomWidth - wallMargin ||
+      wz < wallMargin ||
+      wz > roomDepth - wallMargin
+    ) {
+      return true;
+    }
+
+    for (const f of furniture) {
+      if (f.id === selfId) continue;
+      const dx = wx - (f.x + f.width / 2);
+      const dz2 = wz - (f.y + f.depth / 2);
+      const fRot = (f.rotation * Math.PI) / 180;
+      const cosR = Math.cos(fRot);
+      const sinR = Math.sin(fRot);
+      const flx = dx * cosR + dz2 * sinR;
+      const flz = -dx * sinR + dz2 * cosR;
+      if (
+        Math.abs(flx) <= f.width / 2 + furnitureMargin &&
+        Math.abs(flz) <= f.depth / 2 + furnitureMargin
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function ClosetMesh({
-  width,
-  depth,
-  height,
+  item,
   color,
 }: {
-  width: number;
-  depth: number;
-  height: number;
+  item: FurnitureItem;
   color: string;
 }) {
+  const room = useSimulatorStore((s) => s.room);
+  const furniture = useSimulatorStore((s) => s.furniture);
+
+  const { width, depth, height } = item;
+  const itemRotation = -(item.rotation * Math.PI) / 180;
+  const itemCenterX = item.x + width / 2;
+  const itemCenterZ = item.y + depth / 2;
+
   const [leftDoorOpen, setLeftDoorOpen] = useState(false);
   const [rightDoorOpen, setRightDoorOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -427,35 +545,210 @@ function ClosetMesh({
   const raisedT = 3;
 
   useFrame(() => {
+    const cosItem = Math.cos(itemRotation);
+    const sinItem = Math.sin(itemRotation);
+
+    // Left door with collision
     if (leftDoorGroupRef.current) {
       const target = leftDoorOpen ? -maxOpenAngle : 0;
       const diff = target - leftAngleRef.current;
       if (Math.abs(diff) > 0.001) {
-        leftAngleRef.current += diff * 0.1;
-      } else {
-        leftAngleRef.current = target;
+        let nextAngle = leftAngleRef.current + diff * 0.1;
+        const isOpening =
+          Math.abs(nextAngle) > Math.abs(leftAngleRef.current) + 0.0001;
+
+        if (
+          isOpening &&
+          checkClosetDoorCollision(
+            nextAngle,
+            -innerW / 2,
+            depth / 2,
+            doorW,
+            1,
+            doorT / 2,
+            itemCenterX,
+            itemCenterZ,
+            cosItem,
+            sinItem,
+            room.width,
+            room.height,
+            furniture,
+            item.id,
+          )
+        ) {
+          let lo = leftAngleRef.current;
+          let hi = nextAngle;
+          for (let i = 0; i < 5; i++) {
+            const mid = (lo + hi) / 2;
+            if (
+              checkClosetDoorCollision(
+                mid,
+                -innerW / 2,
+                depth / 2,
+                doorW,
+                1,
+                doorT / 2,
+                itemCenterX,
+                itemCenterZ,
+                cosItem,
+                sinItem,
+                room.width,
+                room.height,
+                furniture,
+                item.id,
+              )
+            ) {
+              hi = mid;
+            } else {
+              lo = mid;
+            }
+          }
+          nextAngle = lo;
+          if (Math.abs(nextAngle - leftAngleRef.current) < 0.001) {
+            leftDoorGroupRef.current.rotation.y = leftAngleRef.current;
+          } else {
+            leftAngleRef.current = nextAngle;
+            leftDoorGroupRef.current.rotation.y = leftAngleRef.current;
+          }
+        } else {
+          leftAngleRef.current = nextAngle;
+          leftDoorGroupRef.current.rotation.y = leftAngleRef.current;
+        }
       }
-      leftDoorGroupRef.current.rotation.y = leftAngleRef.current;
     }
+
+    // Right door with collision
     if (rightDoorGroupRef.current) {
       const target = rightDoorOpen ? maxOpenAngle : 0;
       const diff = target - rightAngleRef.current;
       if (Math.abs(diff) > 0.001) {
-        rightAngleRef.current += diff * 0.1;
-      } else {
-        rightAngleRef.current = target;
+        let nextAngle = rightAngleRef.current + diff * 0.1;
+        const isOpening =
+          Math.abs(nextAngle) > Math.abs(rightAngleRef.current) + 0.0001;
+
+        if (
+          isOpening &&
+          checkClosetDoorCollision(
+            nextAngle,
+            innerW / 2,
+            depth / 2,
+            doorW,
+            -1,
+            doorT / 2,
+            itemCenterX,
+            itemCenterZ,
+            cosItem,
+            sinItem,
+            room.width,
+            room.height,
+            furniture,
+            item.id,
+          )
+        ) {
+          let lo = rightAngleRef.current;
+          let hi = nextAngle;
+          for (let i = 0; i < 5; i++) {
+            const mid = (lo + hi) / 2;
+            if (
+              checkClosetDoorCollision(
+                mid,
+                innerW / 2,
+                depth / 2,
+                doorW,
+                -1,
+                doorT / 2,
+                itemCenterX,
+                itemCenterZ,
+                cosItem,
+                sinItem,
+                room.width,
+                room.height,
+                furniture,
+                item.id,
+              )
+            ) {
+              hi = mid;
+            } else {
+              lo = mid;
+            }
+          }
+          nextAngle = lo;
+          if (Math.abs(nextAngle - rightAngleRef.current) < 0.001) {
+            rightDoorGroupRef.current.rotation.y = rightAngleRef.current;
+          } else {
+            rightAngleRef.current = nextAngle;
+            rightDoorGroupRef.current.rotation.y = rightAngleRef.current;
+          }
+        } else {
+          rightAngleRef.current = nextAngle;
+          rightDoorGroupRef.current.rotation.y = rightAngleRef.current;
+        }
       }
-      rightDoorGroupRef.current.rotation.y = rightAngleRef.current;
     }
+
+    // Drawer with collision
     if (drawerGroupRef.current) {
       const target = drawerOpen ? maxDrawerSlide : 0;
       const diff = target - drawerOffsetRef.current;
       if (Math.abs(diff) > 0.5) {
-        drawerOffsetRef.current += diff * 0.1;
+        let nextOffset = drawerOffsetRef.current + diff * 0.1;
+        const isOpening = nextOffset > drawerOffsetRef.current + 0.1;
+
+        if (
+          isOpening &&
+          checkClosetDrawerCollision(
+            nextOffset,
+            depth / 2 + raisedT + knobR,
+            innerW - 4,
+            itemCenterX,
+            itemCenterZ,
+            cosItem,
+            sinItem,
+            room.width,
+            room.height,
+            furniture,
+            item.id,
+          )
+        ) {
+          let lo = drawerOffsetRef.current;
+          let hi = nextOffset;
+          for (let i = 0; i < 5; i++) {
+            const mid = (lo + hi) / 2;
+            if (
+              checkClosetDrawerCollision(
+                mid,
+                depth / 2 + raisedT + knobR,
+                innerW - 4,
+                itemCenterX,
+                itemCenterZ,
+                cosItem,
+                sinItem,
+                room.width,
+                room.height,
+                furniture,
+                item.id,
+              )
+            ) {
+              hi = mid;
+            } else {
+              lo = mid;
+            }
+          }
+          nextOffset = lo;
+          if (Math.abs(nextOffset - drawerOffsetRef.current) < 0.5) {
+            drawerGroupRef.current.position.z = drawerOffsetRef.current;
+          } else {
+            drawerOffsetRef.current = nextOffset;
+            drawerGroupRef.current.position.z = drawerOffsetRef.current;
+          }
+        } else {
+          drawerOffsetRef.current = nextOffset;
+          drawerGroupRef.current.position.z = drawerOffsetRef.current;
+        }
       } else {
         drawerOffsetRef.current = target;
+        drawerGroupRef.current.position.z = drawerOffsetRef.current;
       }
-      drawerGroupRef.current.position.z = drawerOffsetRef.current;
     }
   });
 
@@ -747,20 +1040,32 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const color = item.color ?? DEFAULT_FURNITURE_COLOR;
   const rotationY = -(item.rotation * Math.PI) / 180;
 
+  if (item.type === "closet") {
+    return (
+      <group
+        position={[
+          item.x + item.width / 2,
+          0,
+          item.y + item.depth / 2,
+        ]}
+        rotation={[0, rotationY, 0]}
+      >
+        <ClosetMesh item={item} color={color} />
+      </group>
+    );
+  }
+
   if (
     item.type === "bed" ||
     item.type === "display-cabinet" ||
-    item.type === "bookshelf" ||
-    item.type === "closet"
+    item.type === "bookshelf"
   ) {
     const Mesh =
       item.type === "bed"
         ? BedMesh
         : item.type === "bookshelf"
           ? BookshelfMesh
-          : item.type === "closet"
-            ? ClosetMesh
-            : DisplayCabinetMesh;
+          : DisplayCabinetMesh;
     return (
       <group
         position={[
