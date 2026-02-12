@@ -1419,16 +1419,16 @@ function ClosetMesh({
 }
 
 function MonitorStandMesh({
-  width,
-  depth,
-  height,
+  item,
   color,
 }: {
-  width: number;
-  depth: number;
-  height: number;
+  item: FurnitureItem;
   color: string;
 }) {
+  const { width, depth, height } = item;
+  const updateFurniture = useSimulatorStore((s) => s.updateFurniture);
+  const commitHistory = useSimulatorStore((s) => s.commitHistory);
+
   const metalColor = "#888888";
   const screenColor = "#1a1a1a";
   const bezelColor = "#222222";
@@ -1453,13 +1453,34 @@ function MonitorStandMesh({
 
   // Bezel (chin at bottom of monitor)
   const bezelH = height * 0.04;
-  const bezelCenterY = monitorBottomY + bezelH / 2;
 
   // Tilt angle (~5 degrees backward)
   const tiltAngle = -0.087; // ~5 degrees in radians
 
   // Monitor Z position (centered on base, slightly back)
   const monitorZ = -depth * 0.1;
+
+  // Pivot animation
+  const pivotRef = useRef(0);
+  const pivotGroupRef = useRef<Group>(null);
+  const pivotTarget = item.pivoted ? Math.PI / 2 : 0;
+
+  useFrame(() => {
+    if (!pivotGroupRef.current) return;
+    const diff = pivotTarget - pivotRef.current;
+    if (Math.abs(diff) < 0.001) return;
+    pivotRef.current += diff * 0.1;
+    pivotGroupRef.current.rotation.z = pivotRef.current;
+  });
+
+  const togglePivot = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      updateFurniture(item.id, { pivoted: !item.pivoted });
+      commitHistory();
+    },
+    [item.id, item.pivoted, updateFurniture, commitHistory],
+  );
 
   return (
     <>
@@ -1483,39 +1504,41 @@ function MonitorStandMesh({
         position={[0, monitorCenterY, monitorZ]}
         rotation={[tiltAngle, 0, 0]}
       >
-        {/* Monitor panel (screen) */}
-        <mesh castShadow>
-          <boxGeometry args={[monitorW, monitorH, monitorT]} />
-          <meshStandardMaterial color={screenColor} />
-        </mesh>
+        <group ref={pivotGroupRef}>
+          {/* Monitor panel (screen) */}
+          <mesh castShadow onClick={togglePivot}>
+            <boxGeometry args={[monitorW, monitorH, monitorT]} />
+            <meshStandardMaterial color={screenColor} />
+          </mesh>
 
-        {/* Screen surface (slightly inset, dark) */}
-        <mesh position={[0, bezelH / 2, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
-          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
-        </mesh>
+          {/* Screen surface (slightly inset, dark) */}
+          <mesh position={[0, bezelH / 2, monitorT / 2 + 0.5]} onClick={togglePivot}>
+            <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+            <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+          </mesh>
 
-        {/* Bottom bezel (chin) */}
-        <mesh position={[0, -monitorH / 2 + bezelH / 2, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.3, bezelH, 1]} />
-          <meshStandardMaterial color={bezelColor} />
-        </mesh>
+          {/* Bottom bezel (chin) */}
+          <mesh position={[0, -monitorH / 2 + bezelH / 2, monitorT / 2 + 0.5]}>
+            <boxGeometry args={[monitorW * 0.3, bezelH, 1]} />
+            <meshStandardMaterial color={bezelColor} />
+          </mesh>
+        </group>
       </group>
     </>
   );
 }
 
 function MonitorArmPoleMesh({
-  width,
-  depth,
-  height,
+  item,
   color,
 }: {
-  width: number;
-  depth: number;
-  height: number;
+  item: FurnitureItem;
   color: string;
 }) {
+  const { width, depth, height } = item;
+  const updateFurniture = useSimulatorStore((s) => s.updateFurniture);
+  const commitHistory = useSimulatorStore((s) => s.commitHistory);
+
   const metalColor = "#666666";
   const darkColor = "#333333";
   const screenColor = "#1a1a1a";
@@ -1553,6 +1576,28 @@ function MonitorArmPoleMesh({
 
   // Tilt
   const tiltAngle = -0.087;
+
+  // Pivot animation
+  const pivotRef = useRef(0);
+  const pivotGroupRef = useRef<Group>(null);
+  const pivotTarget = item.pivoted ? Math.PI / 2 : 0;
+
+  useFrame(() => {
+    if (!pivotGroupRef.current) return;
+    const diff = pivotTarget - pivotRef.current;
+    if (Math.abs(diff) < 0.001) return;
+    pivotRef.current += diff * 0.1;
+    pivotGroupRef.current.rotation.z = pivotRef.current;
+  });
+
+  const togglePivot = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      updateFurniture(item.id, { pivoted: !item.pivoted });
+      commitHistory();
+    },
+    [item.id, item.pivoted, updateFurniture, commitHistory],
+  );
 
   return (
     <>
@@ -1594,38 +1639,40 @@ function MonitorArmPoleMesh({
         position={[0, armY, monitorZ]}
         rotation={[tiltAngle, 0, 0]}
       >
-        <mesh castShadow>
-          <boxGeometry args={[monitorW, monitorH, monitorT]} />
-          <meshStandardMaterial color={screenColor} />
-        </mesh>
+        <group ref={pivotGroupRef}>
+          <mesh castShadow onClick={togglePivot}>
+            <boxGeometry args={[monitorW, monitorH, monitorT]} />
+            <meshStandardMaterial color={screenColor} />
+          </mesh>
 
-        {/* Screen surface */}
-        <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
-          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
-        </mesh>
+          {/* Screen surface */}
+          <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]} onClick={togglePivot}>
+            <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+            <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+          </mesh>
 
-        {/* Chin bezel */}
-        <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
-          <meshStandardMaterial color={darkColor} />
-        </mesh>
+          {/* Chin bezel */}
+          <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
+            <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+        </group>
       </group>
     </>
   );
 }
 
 function MonitorArmClampMesh({
-  width,
-  depth,
-  height,
+  item,
   color,
 }: {
-  width: number;
-  depth: number;
-  height: number;
+  item: FurnitureItem;
   color: string;
 }) {
+  const { width, depth, height } = item;
+  const updateFurniture = useSimulatorStore((s) => s.updateFurniture);
+  const commitHistory = useSimulatorStore((s) => s.commitHistory);
+
   const metalColor = "#666666";
   const darkColor = "#333333";
   const screenColor = "#1a1a1a";
@@ -1665,6 +1712,28 @@ function MonitorArmClampMesh({
   const upperArmEndZ = lowerArmTopZ + upperArmLen;
 
   const tiltAngle = -0.087;
+
+  // Pivot animation
+  const pivotRef = useRef(0);
+  const pivotGroupRef = useRef<Group>(null);
+  const pivotTarget = item.pivoted ? Math.PI / 2 : 0;
+
+  useFrame(() => {
+    if (!pivotGroupRef.current) return;
+    const diff = pivotTarget - pivotRef.current;
+    if (Math.abs(diff) < 0.001) return;
+    pivotRef.current += diff * 0.1;
+    pivotGroupRef.current.rotation.z = pivotRef.current;
+  });
+
+  const togglePivot = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      updateFurniture(item.id, { pivoted: !item.pivoted });
+      commitHistory();
+    },
+    [item.id, item.pivoted, updateFurniture, commitHistory],
+  );
 
   return (
     <>
@@ -1717,22 +1786,24 @@ function MonitorArmClampMesh({
         position={[0, upperArmY, upperArmEndZ + vesaW + monitorT / 2]}
         rotation={[tiltAngle, 0, 0]}
       >
-        <mesh castShadow>
-          <boxGeometry args={[monitorW, monitorH, monitorT]} />
-          <meshStandardMaterial color={screenColor} />
-        </mesh>
+        <group ref={pivotGroupRef}>
+          <mesh castShadow onClick={togglePivot}>
+            <boxGeometry args={[monitorW, monitorH, monitorT]} />
+            <meshStandardMaterial color={screenColor} />
+          </mesh>
 
-        {/* Screen surface */}
-        <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
-          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
-        </mesh>
+          {/* Screen surface */}
+          <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]} onClick={togglePivot}>
+            <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+            <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+          </mesh>
 
-        {/* Chin bezel */}
-        <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
-          <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
-          <meshStandardMaterial color={darkColor} />
-        </mesh>
+          {/* Chin bezel */}
+          <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
+            <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+        </group>
       </group>
     </>
   );
@@ -1759,8 +1830,13 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
     );
   }
 
-  if (item.type === "monitor-arm") {
-    const Mesh = item.name.includes("기둥") ? MonitorArmPoleMesh : MonitorArmClampMesh;
+  if (item.type === "monitor-arm" || item.type === "monitor-stand") {
+    const Mesh =
+      item.type === "monitor-stand"
+        ? MonitorStandMesh
+        : item.name.includes("기둥")
+          ? MonitorArmPoleMesh
+          : MonitorArmClampMesh;
     return (
       <group
         position={[
@@ -1770,12 +1846,7 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
         ]}
         rotation={[0, rotationY, 0]}
       >
-        <Mesh
-          width={item.width}
-          depth={item.depth}
-          height={item.height}
-          color={color}
-        />
+        <Mesh item={item} color={color} />
       </group>
     );
   }
@@ -1784,15 +1855,13 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
     item.type === "bed" ||
     item.type === "bookshelf" ||
     item.type === "chair" ||
-    item.type === "desk" ||
-    item.type === "monitor-stand"
+    item.type === "desk"
   ) {
     const meshMap = {
       bed: BedMesh,
       bookshelf: BookshelfMesh,
       chair: ChairMesh,
       desk: DeskMesh,
-      "monitor-stand": MonitorStandMesh,
     } as const;
     const Mesh = meshMap[item.type as keyof typeof meshMap];
     return (

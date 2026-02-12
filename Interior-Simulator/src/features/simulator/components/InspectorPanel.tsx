@@ -1,8 +1,58 @@
 import { useState, useEffect, useCallback } from "react";
 import "./InspectorPanel.css";
 import { useSimulatorStore } from "../store/useSimulatorStore";
-import type { Room, WallSide } from "../types";
+import type { Room, WallSide, FurnitureType } from "../types";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
+
+const MM_PER_INCH = 25.4;
+const DIAG = Math.sqrt(16 * 16 + 9 * 9); // ≈ 18.358
+
+function isMonitorType(type: FurnitureType): boolean {
+  return type === "monitor-stand" || type === "monitor-arm";
+}
+
+function inchesToDimensions(
+  inches: number,
+  type: FurnitureType,
+  name: string,
+): { width?: number; depth?: number; height?: number } {
+  const monitorW = (inches * MM_PER_INCH * 16) / DIAG;
+  const monitorH = (inches * MM_PER_INCH * 9) / DIAG;
+
+  if (type === "monitor-stand") {
+    return { width: monitorW / 0.92, height: monitorH / 0.6 };
+  }
+  // monitor-arm
+  if (name.includes("기둥")) {
+    return { depth: monitorW / 0.85, height: monitorH / 0.45 };
+  }
+  return { depth: monitorW / 0.85, height: monitorH / 0.5 };
+}
+
+function dimensionsToInches(
+  type: FurnitureType,
+  name: string,
+  width: number,
+  depth: number,
+  height: number,
+): number {
+  let monitorW: number;
+  let monitorH: number;
+
+  if (type === "monitor-stand") {
+    monitorW = width * 0.92;
+    monitorH = height * 0.6;
+  } else if (name.includes("기둥")) {
+    monitorW = depth * 0.85;
+    monitorH = height * 0.45;
+  } else {
+    monitorW = depth * 0.85;
+    monitorH = height * 0.5;
+  }
+
+  const diagMM = Math.sqrt(monitorW * monitorW + monitorH * monitorH);
+  return diagMM / MM_PER_INCH;
+}
 
 const wallLabels: Record<WallSide, string> = {
   north: "북쪽",
@@ -199,7 +249,48 @@ export function InspectorPanel() {
             {colorField("색상", placingFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) =>
               updatePlacementFurniture({ color: next })
             )}
+            {isMonitorType(placingFurniture.type) &&
+              numberField(
+                "인치",
+                Math.round(
+                  dimensionsToInches(
+                    placingFurniture.type,
+                    placingFurniture.name,
+                    placingFurniture.width,
+                    placingFurniture.depth,
+                    placingFurniture.height,
+                  ) * 10,
+                ) / 10,
+                (next) => {
+                  const dims = inchesToDimensions(
+                    Math.max(next, 10),
+                    placingFurniture.type,
+                    placingFurniture.name,
+                  );
+                  updatePlacementFurniture(dims);
+                },
+              )}
           </div>
+          {isMonitorType(placingFurniture.type) && (
+            <button
+              type="button"
+              onClick={() =>
+                updatePlacementFurniture({ pivoted: !placingFurniture.pivoted })
+              }
+              style={{
+                marginTop: "0.5rem",
+                padding: "0.5rem 0.75rem",
+                background: placingFurniture.pivoted ? "#4A90E2" : "#ddd",
+                color: placingFurniture.pivoted ? "white" : "#333",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              피벗 전환 {placingFurniture.pivoted ? "(세로)" : "(가로)"}
+            </button>
+          )}
           <div className="inspector-rotate-actions">
             <button type="button" onClick={() => rotatePlacingFurniture(-15)}>
               -15°
@@ -278,7 +369,48 @@ export function InspectorPanel() {
             {colorField("색상", pendingFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) =>
               updatePendingFurniture({ color: next })
             )}
+            {isMonitorType(pendingFurniture.type) &&
+              numberField(
+                "인치",
+                Math.round(
+                  dimensionsToInches(
+                    pendingFurniture.type,
+                    pendingFurniture.name,
+                    pendingFurniture.width,
+                    pendingFurniture.depth,
+                    pendingFurniture.height,
+                  ) * 10,
+                ) / 10,
+                (next) => {
+                  const dims = inchesToDimensions(
+                    Math.max(next, 10),
+                    pendingFurniture.type,
+                    pendingFurniture.name,
+                  );
+                  updatePendingFurniture(dims);
+                },
+              )}
           </div>
+          {isMonitorType(pendingFurniture.type) && (
+            <button
+              type="button"
+              onClick={() =>
+                updatePendingFurniture({ pivoted: !pendingFurniture.pivoted })
+              }
+              style={{
+                marginTop: "0.5rem",
+                padding: "0.5rem 0.75rem",
+                background: pendingFurniture.pivoted ? "#4A90E2" : "#ddd",
+                color: pendingFurniture.pivoted ? "white" : "#333",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              피벗 전환 {pendingFurniture.pivoted ? "(세로)" : "(가로)"}
+            </button>
+          )}
           <div className="inspector-rotate-actions">
             <button type="button" onClick={() => rotatePendingFurniture(-15)}>
               -15°
@@ -694,7 +826,52 @@ export function InspectorPanel() {
               updateFurniture(selectedFurniture.id, { color: next });
               commitHistory();
             })}
+            {isMonitorType(selectedFurniture.type) &&
+              numberField(
+                "인치",
+                Math.round(
+                  dimensionsToInches(
+                    selectedFurniture.type,
+                    selectedFurniture.name,
+                    selectedFurniture.width,
+                    selectedFurniture.depth,
+                    selectedFurniture.height,
+                  ) * 10,
+                ) / 10,
+                (next) => {
+                  const dims = inchesToDimensions(
+                    Math.max(next, 10),
+                    selectedFurniture.type,
+                    selectedFurniture.name,
+                  );
+                  updateFurniture(selectedFurniture.id, dims);
+                  commitHistory();
+                },
+              )}
           </div>
+          {isMonitorType(selectedFurniture.type) && (
+            <button
+              type="button"
+              onClick={() => {
+                updateFurniture(selectedFurniture.id, {
+                  pivoted: !selectedFurniture.pivoted,
+                });
+                commitHistory();
+              }}
+              style={{
+                marginTop: "0.5rem",
+                padding: "0.5rem 0.75rem",
+                background: selectedFurniture.pivoted ? "#4A90E2" : "#ddd",
+                color: selectedFurniture.pivoted ? "white" : "#333",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              피벗 전환 {selectedFurniture.pivoted ? "(세로)" : "(가로)"}
+            </button>
+          )}
           <div className="inspector-rotate-actions">
             <button type="button" onClick={() => rotateSelectedFurniture(-15)}>
               -15°

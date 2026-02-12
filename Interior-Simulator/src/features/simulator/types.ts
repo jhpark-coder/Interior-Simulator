@@ -65,6 +65,7 @@ export type FurnitureItem = {
   color?: string;
   zIndex: number;
   locked: boolean;
+  pivoted?: boolean;
 };
 
 export type ItemDefinition = {

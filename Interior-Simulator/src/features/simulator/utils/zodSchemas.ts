@@ -54,6 +54,7 @@ export const FurnitureItemSchema = z.object({
     .optional(),
   zIndex: z.number(),
   locked: z.boolean(),
+  pivoted: z.boolean().optional(),
 });
 
 // Door schema
