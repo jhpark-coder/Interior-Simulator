@@ -1,3 +1,7 @@
+import { useRef, useState, useCallback } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Group } from "three";
+import type { ThreeEvent } from "@react-three/fiber";
 import type { FurnitureItem } from "../types";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
 
@@ -366,6 +370,379 @@ function DisplayCabinetMesh({
   );
 }
 
+function ClosetMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  const [leftDoorOpen, setLeftDoorOpen] = useState(false);
+  const [rightDoorOpen, setRightDoorOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const leftDoorGroupRef = useRef<Group>(null);
+  const rightDoorGroupRef = useRef<Group>(null);
+  const drawerGroupRef = useRef<Group>(null);
+
+  const leftAngleRef = useRef(0);
+  const rightAngleRef = useRef(0);
+  const drawerOffsetRef = useRef(0);
+
+  const sideT = 18;
+  const backT = 8;
+  const topT = 20;
+  const bottomT = 18;
+  const doorT = 20;
+  const dividerT = 15;
+
+  const legH = Math.max(height * 0.04, 60);
+  const legDiam = Math.min(40, width * 0.05);
+  const legInset = 20;
+
+  const drawerH = height * 0.12;
+  const innerW = width - sideT * 2;
+  const doorW = innerW / 2;
+
+  // Y layout: legs → bottom → drawer → divider → doors → top
+  const drawerBottom = legH + bottomT;
+  const dividerBottom = drawerBottom + drawerH;
+  const doorBottom = dividerBottom + dividerT;
+  const doorSectionH = height - topT - doorBottom;
+
+  const maxOpenAngle = (110 * Math.PI) / 180;
+  const maxDrawerSlide = depth * 0.65;
+  const knobR = 16;
+
+  // Panel detail on doors
+  const panelMargin = doorW * 0.12;
+  const panelGapV = doorSectionH * 0.04;
+  const panelDetailW = doorW - panelMargin * 2;
+  const upperPanelH = (doorSectionH - panelMargin * 2 - panelGapV) * 0.55;
+  const lowerPanelH = (doorSectionH - panelMargin * 2 - panelGapV) * 0.45;
+  const raisedT = 3;
+
+  useFrame(() => {
+    if (leftDoorGroupRef.current) {
+      const target = leftDoorOpen ? -maxOpenAngle : 0;
+      const diff = target - leftAngleRef.current;
+      if (Math.abs(diff) > 0.001) {
+        leftAngleRef.current += diff * 0.1;
+      } else {
+        leftAngleRef.current = target;
+      }
+      leftDoorGroupRef.current.rotation.y = leftAngleRef.current;
+    }
+    if (rightDoorGroupRef.current) {
+      const target = rightDoorOpen ? maxOpenAngle : 0;
+      const diff = target - rightAngleRef.current;
+      if (Math.abs(diff) > 0.001) {
+        rightAngleRef.current += diff * 0.1;
+      } else {
+        rightAngleRef.current = target;
+      }
+      rightDoorGroupRef.current.rotation.y = rightAngleRef.current;
+    }
+    if (drawerGroupRef.current) {
+      const target = drawerOpen ? maxDrawerSlide : 0;
+      const diff = target - drawerOffsetRef.current;
+      if (Math.abs(diff) > 0.5) {
+        drawerOffsetRef.current += diff * 0.1;
+      } else {
+        drawerOffsetRef.current = target;
+      }
+      drawerGroupRef.current.position.z = drawerOffsetRef.current;
+    }
+  });
+
+  const toggleLeftDoor = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    setLeftDoorOpen((p) => !p);
+  }, []);
+  const toggleRightDoor = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    setRightDoorOpen((p) => !p);
+  }, []);
+  const toggleDrawer = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    setDrawerOpen((p) => !p);
+  }, []);
+
+  return (
+    <>
+      {/* Legs */}
+      {(
+        [
+          [
+            -width / 2 + legInset + legDiam / 2,
+            -depth / 2 + legInset + legDiam / 2,
+          ],
+          [
+            width / 2 - legInset - legDiam / 2,
+            -depth / 2 + legInset + legDiam / 2,
+          ],
+          [
+            -width / 2 + legInset + legDiam / 2,
+            depth / 2 - legInset - legDiam / 2,
+          ],
+          [
+            width / 2 - legInset - legDiam / 2,
+            depth / 2 - legInset - legDiam / 2,
+          ],
+        ] as [number, number][]
+      ).map(([x, z], i) => (
+        <mesh key={`leg-${i}`} position={[x, legH / 2, z]}>
+          <cylinderGeometry args={[legDiam / 2, legDiam * 0.35, legH, 8]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      ))}
+
+      {/* Left side panel */}
+      <mesh
+        position={[
+          -width / 2 + sideT / 2,
+          legH + (height - legH) / 2,
+          0,
+        ]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[sideT, height - legH, depth]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Right side panel */}
+      <mesh
+        position={[
+          width / 2 - sideT / 2,
+          legH + (height - legH) / 2,
+          0,
+        ]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[sideT, height - legH, depth]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Top panel */}
+      <mesh position={[0, height - topT / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[width, topT, depth]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Bottom panel */}
+      <mesh position={[0, legH + bottomT / 2, 0]} receiveShadow>
+        <boxGeometry args={[innerW, bottomT, depth - backT]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Back panel */}
+      <mesh
+        position={[0, legH + (height - legH) / 2, -depth / 2 + backT / 2]}
+      >
+        <boxGeometry args={[innerW, height - legH, backT]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Divider between drawer and doors */}
+      <mesh position={[0, dividerBottom + dividerT / 2, 0]}>
+        <boxGeometry args={[innerW, dividerT, depth - backT]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+
+      {/* Drawer */}
+      <group ref={drawerGroupRef}>
+        {/* Front face */}
+        <mesh
+          position={[0, drawerBottom + drawerH / 2, depth / 2 - doorT / 2]}
+          onClick={toggleDrawer}
+          castShadow
+        >
+          <boxGeometry args={[innerW - 4, drawerH - 4, doorT]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+        {/* Raised panel on drawer front */}
+        <mesh
+          position={[
+            0,
+            drawerBottom + drawerH / 2,
+            depth / 2 + raisedT / 2,
+          ]}
+          onClick={toggleDrawer}
+        >
+          <boxGeometry args={[innerW * 0.8, drawerH * 0.55, raisedT]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+        {/* Drawer knob */}
+        <mesh
+          position={[
+            0,
+            drawerBottom + drawerH / 2,
+            depth / 2 + raisedT + knobR * 0.5,
+          ]}
+          onClick={toggleDrawer}
+        >
+          <sphereGeometry args={[knobR, 12, 8]} />
+          <meshPhongMaterial
+            color="#aaaaaa"
+            specular="#ffffff"
+            shininess={120}
+          />
+        </mesh>
+        {/* Drawer bottom */}
+        <mesh position={[0, drawerBottom + 6, -(backT + doorT) / 2]}>
+          <boxGeometry args={[innerW - 8, 6, depth - backT - doorT - 8]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+        {/* Drawer left wall */}
+        <mesh
+          position={[
+            -(innerW / 2 - 6),
+            drawerBottom + drawerH / 2,
+            -(backT + doorT) / 2,
+          ]}
+        >
+          <boxGeometry args={[6, drawerH - 8, depth - backT - doorT - 8]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+        {/* Drawer right wall */}
+        <mesh
+          position={[
+            innerW / 2 - 6,
+            drawerBottom + drawerH / 2,
+            -(backT + doorT) / 2,
+          ]}
+        >
+          <boxGeometry args={[6, drawerH - 8, depth - backT - doorT - 8]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      </group>
+
+      {/* Left door — hinge at left outer edge, opens outward to the left */}
+      <group position={[-innerW / 2, doorBottom, depth / 2]}>
+        <group ref={leftDoorGroupRef}>
+          {/* Invisible hit area */}
+          <mesh
+            position={[doorW / 2, doorSectionH / 2, 0]}
+            onClick={toggleLeftDoor}
+          >
+            <boxGeometry
+              args={[doorW, doorSectionH, doorT + raisedT * 2 + knobR * 2]}
+            />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+          {/* Door panel */}
+          <mesh
+            position={[doorW / 2, doorSectionH / 2, -doorT / 2]}
+            castShadow
+          >
+            <boxGeometry args={[doorW - 2, doorSectionH - 2, doorT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Upper raised panel */}
+          <mesh
+            position={[
+              doorW / 2,
+              doorSectionH - panelMargin - upperPanelH / 2,
+              raisedT / 2,
+            ]}
+          >
+            <boxGeometry args={[panelDetailW, upperPanelH, raisedT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Lower raised panel */}
+          <mesh
+            position={[
+              doorW / 2,
+              panelMargin + lowerPanelH / 2,
+              raisedT / 2,
+            ]}
+          >
+            <boxGeometry args={[panelDetailW, lowerPanelH, raisedT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Knob (near center edge) */}
+          <mesh
+            position={[
+              doorW - panelMargin,
+              doorSectionH / 2,
+              raisedT + knobR * 0.5,
+            ]}
+          >
+            <sphereGeometry args={[knobR, 12, 8]} />
+            <meshPhongMaterial
+              color="#aaaaaa"
+              specular="#ffffff"
+              shininess={120}
+            />
+          </mesh>
+        </group>
+      </group>
+
+      {/* Right door — hinge at right outer edge, opens outward to the right */}
+      <group position={[innerW / 2, doorBottom, depth / 2]}>
+        <group ref={rightDoorGroupRef}>
+          {/* Invisible hit area */}
+          <mesh
+            position={[-doorW / 2, doorSectionH / 2, 0]}
+            onClick={toggleRightDoor}
+          >
+            <boxGeometry
+              args={[doorW, doorSectionH, doorT + raisedT * 2 + knobR * 2]}
+            />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+          {/* Door panel */}
+          <mesh
+            position={[-doorW / 2, doorSectionH / 2, -doorT / 2]}
+            castShadow
+          >
+            <boxGeometry args={[doorW - 2, doorSectionH - 2, doorT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Upper raised panel */}
+          <mesh
+            position={[
+              -doorW / 2,
+              doorSectionH - panelMargin - upperPanelH / 2,
+              raisedT / 2,
+            ]}
+          >
+            <boxGeometry args={[panelDetailW, upperPanelH, raisedT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Lower raised panel */}
+          <mesh
+            position={[
+              -doorW / 2,
+              panelMargin + lowerPanelH / 2,
+              raisedT / 2,
+            ]}
+          >
+            <boxGeometry args={[panelDetailW, lowerPanelH, raisedT]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Knob (near center edge) */}
+          <mesh
+            position={[
+              -(doorW - panelMargin),
+              doorSectionH / 2,
+              raisedT + knobR * 0.5,
+            ]}
+          >
+            <sphereGeometry args={[knobR, 12, 8]} />
+            <meshPhongMaterial
+              color="#aaaaaa"
+              specular="#ffffff"
+              shininess={120}
+            />
+          </mesh>
+        </group>
+      </group>
+    </>
+  );
+}
+
 export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const color = item.color ?? DEFAULT_FURNITURE_COLOR;
   const rotationY = -(item.rotation * Math.PI) / 180;
@@ -373,14 +750,17 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
   if (
     item.type === "bed" ||
     item.type === "display-cabinet" ||
-    item.type === "bookshelf"
+    item.type === "bookshelf" ||
+    item.type === "closet"
   ) {
     const Mesh =
       item.type === "bed"
         ? BedMesh
         : item.type === "bookshelf"
           ? BookshelfMesh
-          : DisplayCabinetMesh;
+          : item.type === "closet"
+            ? ClosetMesh
+            : DisplayCabinetMesh;
     return (
       <group
         position={[
