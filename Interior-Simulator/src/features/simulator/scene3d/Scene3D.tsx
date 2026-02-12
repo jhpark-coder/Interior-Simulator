@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import { RoomMesh } from "./RoomMesh";
 import { FurnitureMesh } from "./FurnitureMesh";
@@ -13,39 +13,44 @@ export function Scene3D() {
   const windows = useSimulatorStore((state) => state.windows);
 
   return (
-    <div style={{ width: "100%", height: "100%", background: "lime" }}>
+    <div style={{ width: "100%", height: "100%" }}>
       <Canvas
         style={{ width: "100%", height: "100%" }}
-        camera={{ position: [5, 5, 5], fov: 50 }}
-        gl={{
-          antialias: true,
-          alpha: false,
+        camera={{
+          position: [
+            room.width * 1.5,
+            room.ceilingHeight * 1.5,
+            room.height * 1.5,
+          ],
+          fov: 50,
+          near: 0.1,
+          far: 20000,
         }}
+        shadows
+        gl={{ antialias: true, alpha: false }}
       >
-        {/* 배경색 */}
-        <color attach="background" args={["#87CEEB"]} />
+        <color attach="background" args={["#2a2a2a"]} />
 
         {/* Lights */}
-        <ambientLight intensity={1} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
+        <ambientLight intensity={0.8} />
+        <directionalLight
+          position={[
+            room.width / 2,
+            room.ceilingHeight * 2,
+            room.height / 2,
+          ]}
+          intensity={0.8}
+          castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
+        <pointLight
+          position={[room.width / 2, room.ceilingHeight, room.height / 2]}
+          intensity={0.5}
+        />
 
-        {/* Test Cube - 원점에 배치 */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial color="red" />
-        </mesh>
-
-        {/* 바닥 */}
-        <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[10, 10]} />
-          <meshStandardMaterial color="green" />
-        </mesh>
-
-        {/* Controls */}
-        <OrbitControls />
-
-        {/* Room */}
-        <RoomMesh room={room} />
+        {/* Room (floor, walls with openings, ceiling) */}
+        <RoomMesh room={room} doors={doors} windows={windows} />
 
         {/* Doors */}
         {doors.map((door) => (
@@ -65,17 +70,17 @@ export function Scene3D() {
         {/* Controls */}
         <OrbitControls
           makeDefault
-          target={[room.width / 2, room.ceilingHeight / 2, room.height / 2]}
+          target={[
+            room.width / 2,
+            room.ceilingHeight / 2,
+            room.height / 2,
+          ]}
           maxPolarAngle={Math.PI / 2}
           minDistance={500}
           maxDistance={room.width * 3}
+          enableDamping
         />
 
-        {/* Grid helper */}
-        <gridHelper
-          args={[Math.max(room.width, room.height) * 2, 20, "#444", "#222"]}
-          position={[room.width / 2, 0, room.height / 2]}
-        />
       </Canvas>
     </div>
   );

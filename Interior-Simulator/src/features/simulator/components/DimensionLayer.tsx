@@ -1,3 +1,4 @@
+import React from "react";
 import { Layer, Line, Text, Arrow, Group, Rect, Shape } from "react-konva";
 import type {
   Room,
@@ -235,7 +236,7 @@ export function DimensionLayer({
     );
   };
 
-  const dimensions: JSX.Element[] = [];
+  const dimensions: React.JSX.Element[] = [];
 
   // 방 외부 치수선
   // 상단 수평 치수 (전체 너비)

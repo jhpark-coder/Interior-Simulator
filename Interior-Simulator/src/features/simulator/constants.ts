@@ -8,6 +8,8 @@ export const DEFAULT_ROOM: Room = {
   gridSize: 100,
   snapEnabled: true,
   displayUnit: "mm",
+  wallColor: "#b0b0b0",
+  floorColor: "#c4a882",
 };
 
 export const DEFAULT_FURNITURE_COLOR = "#cfcfcf";

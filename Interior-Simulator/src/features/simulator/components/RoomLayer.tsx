@@ -4,10 +4,11 @@ import type { Room } from "../types";
 type RoomLayerProps = {
   room: Room;
   onClick: () => void;
+  onWallDoubleClick: () => void;
 };
 
-export function RoomLayer({ room, onClick }: RoomLayerProps) {
-  const { width, height, wallThickness } = room;
+export function RoomLayer({ room, onClick, onWallDoubleClick }: RoomLayerProps) {
+  const { width, height, wallThickness, wallColor, floorColor } = room;
 
   return (
     <Layer>
@@ -17,7 +18,7 @@ export function RoomLayer({ room, onClick }: RoomLayerProps) {
         y={0}
         width={width}
         height={height}
-        fill="#f5f5f5"
+        fill={floorColor ?? "#f5f5f5"}
         onClick={onClick}
         onTap={onClick}
       />
@@ -29,8 +30,9 @@ export function RoomLayer({ room, onClick }: RoomLayerProps) {
         y={-wallThickness}
         width={width + wallThickness * 2}
         height={wallThickness}
-        fill="#888"
-        listening={false}
+        fill={wallColor ?? "#888"}
+        onDblClick={onWallDoubleClick}
+        onDblTap={onWallDoubleClick}
       />
       {/* South wall */}
       <Rect
@@ -38,8 +40,9 @@ export function RoomLayer({ room, onClick }: RoomLayerProps) {
         y={height}
         width={width + wallThickness * 2}
         height={wallThickness}
-        fill="#888"
-        listening={false}
+        fill={wallColor ?? "#888"}
+        onDblClick={onWallDoubleClick}
+        onDblTap={onWallDoubleClick}
       />
       {/* West wall */}
       <Rect
@@ -47,8 +50,9 @@ export function RoomLayer({ room, onClick }: RoomLayerProps) {
         y={0}
         width={wallThickness}
         height={height}
-        fill="#888"
-        listening={false}
+        fill={wallColor ?? "#888"}
+        onDblClick={onWallDoubleClick}
+        onDblTap={onWallDoubleClick}
       />
       {/* East wall */}
       <Rect
@@ -56,8 +60,9 @@ export function RoomLayer({ room, onClick }: RoomLayerProps) {
         y={0}
         width={wallThickness}
         height={height}
-        fill="#888"
-        listening={false}
+        fill={wallColor ?? "#888"}
+        onDblClick={onWallDoubleClick}
+        onDblTap={onWallDoubleClick}
       />
     </Layer>
   );

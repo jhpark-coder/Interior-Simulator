@@ -216,7 +216,7 @@ export function Canvas2D() {
           onMouseMove={handleMouseMove}
           onClick={handleStageClick}
         >
-          <RoomLayer room={room} onClick={handleRoomClick} />
+          <RoomLayer room={room} onClick={handleRoomClick} onWallDoubleClick={handleRoomClick} />
           <GridLayer room={room} visible={true} />
           <OpeningLayer
             doors={doors}

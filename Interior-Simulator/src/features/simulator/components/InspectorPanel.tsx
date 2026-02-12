@@ -349,6 +349,9 @@ export function InspectorPanel() {
             {pendingDoor.doorType === "swing" && numberField("개폐 각도 (도)", pendingDoor.openAngle, (next) =>
               updatePendingDoor({ openAngle: Math.max(0, Math.min(120, next)) })
             )}
+            {colorField("문 색상", pendingDoor.color ?? "#654321", (next) =>
+              updatePendingDoor({ color: next })
+            )}
           </div>
           {pendingDoor.doorType === "swing" && (
             <>
@@ -575,6 +578,12 @@ export function InspectorPanel() {
             {numberField("격자 크기 (mm)", room.gridSize, (next) =>
               updateRoom({ gridSize: Math.max(next, 50) })
             )}
+            {colorField("벽 색상", room.wallColor ?? "#b0b0b0", (next) =>
+              updateRoom({ wallColor: next })
+            )}
+            {colorField("바닥 색상", room.floorColor ?? "#c4a882", (next) =>
+              updateRoom({ floorColor: next })
+            )}
           </div>
           <div className="inspector-toggle">
             <span>격자 스냅</span>
@@ -749,6 +758,10 @@ export function InspectorPanel() {
               updateDoor(selectedDoor.id, {
                 openAngle: Math.max(0, Math.min(120, next)),
               });
+            })}
+            {colorField("문 색상", selectedDoor.color ?? "#654321", (next) => {
+              updateDoor(selectedDoor.id, { color: next });
+              commitHistory();
             })}
           </div>
           {selectedDoor.doorType === "swing" && (

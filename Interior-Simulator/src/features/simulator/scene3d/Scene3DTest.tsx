@@ -245,7 +245,7 @@ export function Scene3DTest() {
 
     // Doors
     doors.forEach((door) => {
-      if (door.doorType === "slide") {
+      if (door.doorType === "sliding") {
         // Sliding door
         let position = new THREE.Vector3();
         let rotationY = 0;

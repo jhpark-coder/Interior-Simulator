@@ -21,6 +21,8 @@ export const RoomSchema = z.object({
   gridSize: z.number().min(50, "Grid size must be at least 50mm"),
   snapEnabled: z.boolean(),
   displayUnit: UnitSchema,
+  wallColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().default("#b0b0b0"),
+  floorColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().default("#c4a882"),
 });
 
 // FurnitureType schema
@@ -66,6 +68,7 @@ export const DoorSchema = z.object({
     .min(0, "Open angle must be at least 0")
     .max(120, "Open angle must be at most 120"),
   thickness: z.number().min(20, "Door thickness must be at least 20mm"),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().default("#654321"),
 });
 
 // Window schema

@@ -20,6 +20,8 @@ export type Room = {
   gridSize: number;
   snapEnabled: boolean;
   displayUnit: Unit;
+  wallColor?: string;
+  floorColor?: string;
 };
 
 export type ItemCategory = "furniture" | "appliance" | "electronics" | "fixture";
@@ -90,6 +92,7 @@ export type Door = {
   slideDirection: DoorSlideDirection;
   openAngle: number;
   thickness: number;
+  color?: string;
 };
 
 export type Window = {

@@ -1,3 +1,4 @@
+import React from "react";
 import { Layer, Line } from "react-konva";
 import type { Room } from "../types";
 
@@ -9,7 +10,7 @@ type GridLayerProps = {
 export function GridLayer({ room, visible }: GridLayerProps) {
   if (!visible) return null;
 
-  const lines: JSX.Element[] = [];
+  const lines: React.JSX.Element[] = [];
   const { width, height, gridSize } = room;
 
   // Vertical lines
