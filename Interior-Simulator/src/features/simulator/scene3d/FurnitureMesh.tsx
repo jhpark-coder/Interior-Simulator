@@ -236,27 +236,38 @@ function BookshelfMesh({
 }
 
 function DisplayCabinetMesh({
-  width,
-  depth,
-  height,
+  item,
   color,
 }: {
-  width: number;
-  depth: number;
-  height: number;
+  item: FurnitureItem;
   color: string;
 }) {
-  const frameSize = 15; // corner post thickness
-  const baseH = 30; // base plate height
-  const topH = 20; // top plate height
-  const shelfThick = 8; // glass shelf thickness
-  const panelThick = 6; // glass panel thickness
+  const room = useSimulatorStore((s) => s.room);
+  const furniture = useSimulatorStore((s) => s.furniture);
+
+  const { width, depth, height } = item;
+  const itemRotation = -(item.rotation * Math.PI) / 180;
+  const itemCenterX = item.x + width / 2;
+  const itemCenterZ = item.y + depth / 2;
+
+  const [doorOpen, setDoorOpen] = useState(false);
+  const doorGroupRef = useRef<Group>(null);
+  const doorAngleRef = useRef(0);
+
+  const frameSize = 15;
+  const baseH = 30;
+  const topH = 20;
+  const shelfThick = 8;
+  const panelThick = 6;
 
   const innerH = height - baseH - topH;
   const innerCenterY = baseH + innerH / 2;
-
-  // 3 shelves → 4 tiers
   const shelfSpacing = innerH / 4;
+
+  const panelW = width - frameSize * 2 - 4;
+  const panelH = innerH - 4;
+  const maxOpenAngle = (100 * Math.PI) / 180;
+  const handleR = 8;
 
   const corners: [number, number][] = [
     [-width / 2 + frameSize / 2, -depth / 2 + frameSize / 2],
@@ -264,6 +275,79 @@ function DisplayCabinetMesh({
     [-width / 2 + frameSize / 2, depth / 2 - frameSize / 2],
     [width / 2 - frameSize / 2, depth / 2 - frameSize / 2],
   ];
+
+  useFrame(() => {
+    if (!doorGroupRef.current) return;
+    const target = doorOpen ? -maxOpenAngle : 0;
+    const diff = target - doorAngleRef.current;
+    if (Math.abs(diff) < 0.001) return;
+
+    let nextAngle = doorAngleRef.current + diff * 0.1;
+    const isOpening =
+      Math.abs(nextAngle) > Math.abs(doorAngleRef.current) + 0.0001;
+
+    if (isOpening) {
+      const cosItem = Math.cos(itemRotation);
+      const sinItem = Math.sin(itemRotation);
+
+      if (
+        checkClosetDoorCollision(
+          nextAngle,
+          -panelW / 2,
+          depth / 2 - frameSize / 2,
+          panelW,
+          1,
+          panelThick / 2,
+          itemCenterX,
+          itemCenterZ,
+          cosItem,
+          sinItem,
+          room.width,
+          room.height,
+          furniture,
+          item.id,
+        )
+      ) {
+        let lo = doorAngleRef.current;
+        let hi = nextAngle;
+        for (let i = 0; i < 5; i++) {
+          const mid = (lo + hi) / 2;
+          if (
+            checkClosetDoorCollision(
+              mid,
+              -panelW / 2,
+              depth / 2 - frameSize / 2,
+              panelW,
+              1,
+              panelThick / 2,
+              itemCenterX,
+              itemCenterZ,
+              cosItem,
+              sinItem,
+              room.width,
+              room.height,
+              furniture,
+              item.id,
+            )
+          ) {
+            hi = mid;
+          } else {
+            lo = mid;
+          }
+        }
+        nextAngle = lo;
+        if (Math.abs(nextAngle - doorAngleRef.current) < 0.001) return;
+      }
+    }
+
+    doorAngleRef.current = nextAngle;
+    doorGroupRef.current.rotation.y = doorAngleRef.current;
+  });
+
+  const toggleDoor = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    setDoorOpen((p) => !p);
+  }, []);
 
   return (
     <>
@@ -310,28 +394,10 @@ function DisplayCabinetMesh({
         </mesh>
       ))}
 
-      {/* Glass panels — front, back, left, right */}
-      {/* Front */}
-      <mesh
-        position={[0, innerCenterY, depth / 2 - frameSize / 2]}
-      >
-        <boxGeometry
-          args={[width - frameSize * 2 - 4, innerH - 4, panelThick]}
-        />
-        <meshPhysicalMaterial
-          color="#cce8f4"
-          transmission={0.85}
-          roughness={0.05}
-          thickness={panelThick}
-        />
-      </mesh>
+      {/* Glass panels — back, left, right (fixed) */}
       {/* Back */}
-      <mesh
-        position={[0, innerCenterY, -depth / 2 + frameSize / 2]}
-      >
-        <boxGeometry
-          args={[width - frameSize * 2 - 4, innerH - 4, panelThick]}
-        />
+      <mesh position={[0, innerCenterY, -depth / 2 + frameSize / 2]}>
+        <boxGeometry args={[panelW, panelH, panelThick]} />
         <meshPhysicalMaterial
           color="#cce8f4"
           transmission={0.85}
@@ -340,11 +406,9 @@ function DisplayCabinetMesh({
         />
       </mesh>
       {/* Left */}
-      <mesh
-        position={[-width / 2 + frameSize / 2, innerCenterY, 0]}
-      >
+      <mesh position={[-width / 2 + frameSize / 2, innerCenterY, 0]}>
         <boxGeometry
-          args={[panelThick, innerH - 4, depth - frameSize * 2 - 4]}
+          args={[panelThick, panelH, depth - frameSize * 2 - 4]}
         />
         <meshPhysicalMaterial
           color="#cce8f4"
@@ -354,11 +418,9 @@ function DisplayCabinetMesh({
         />
       </mesh>
       {/* Right */}
-      <mesh
-        position={[width / 2 - frameSize / 2, innerCenterY, 0]}
-      >
+      <mesh position={[width / 2 - frameSize / 2, innerCenterY, 0]}>
         <boxGeometry
-          args={[panelThick, innerH - 4, depth - frameSize * 2 - 4]}
+          args={[panelThick, panelH, depth - frameSize * 2 - 4]}
         />
         <meshPhysicalMaterial
           color="#cce8f4"
@@ -367,6 +429,47 @@ function DisplayCabinetMesh({
           thickness={panelThick}
         />
       </mesh>
+
+      {/* Front glass — DOOR (hinge on left) */}
+      <group
+        position={[
+          -panelW / 2,
+          innerCenterY,
+          depth / 2 - frameSize / 2,
+        ]}
+      >
+        <group ref={doorGroupRef}>
+          {/* Invisible hit area */}
+          <mesh position={[panelW / 2, 0, 0]} onClick={toggleDoor}>
+            <boxGeometry
+              args={[panelW, panelH, panelThick + handleR * 4]}
+            />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+          {/* Glass panel */}
+          <mesh position={[panelW / 2, 0, 0]}>
+            <boxGeometry args={[panelW, panelH, panelThick]} />
+            <meshPhysicalMaterial
+              color="#cce8f4"
+              transmission={0.85}
+              roughness={0.05}
+              thickness={panelThick}
+            />
+          </mesh>
+          {/* Handle (vertical bar near right edge) */}
+          <mesh
+            position={[panelW - 25, 0, panelThick / 2 + handleR]}
+            castShadow
+          >
+            <cylinderGeometry args={[handleR, handleR, 80, 8]} />
+            <meshPhongMaterial
+              color="#aaaaaa"
+              specular="#ffffff"
+              shininess={120}
+            />
+          </mesh>
+        </group>
+      </group>
     </>
   );
 }
@@ -1040,7 +1143,9 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const color = item.color ?? DEFAULT_FURNITURE_COLOR;
   const rotationY = -(item.rotation * Math.PI) / 180;
 
-  if (item.type === "closet") {
+  if (item.type === "closet" || item.type === "display-cabinet") {
+    const Comp =
+      item.type === "closet" ? ClosetMesh : DisplayCabinetMesh;
     return (
       <group
         position={[
@@ -1050,22 +1155,13 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
         ]}
         rotation={[0, rotationY, 0]}
       >
-        <ClosetMesh item={item} color={color} />
+        <Comp item={item} color={color} />
       </group>
     );
   }
 
-  if (
-    item.type === "bed" ||
-    item.type === "display-cabinet" ||
-    item.type === "bookshelf"
-  ) {
-    const Mesh =
-      item.type === "bed"
-        ? BedMesh
-        : item.type === "bookshelf"
-          ? BookshelfMesh
-          : DisplayCabinetMesh;
+  if (item.type === "bed" || item.type === "bookshelf") {
+    const Mesh = item.type === "bed" ? BedMesh : BookshelfMesh;
     return (
       <group
         position={[
