@@ -32,7 +32,7 @@ export type FurnitureType =
   // Appliances
   | "refrigerator" | "washing-machine" | "dryer" | "dishwasher" | "oven" | "microwave"
   // Electronics
-  | "tv" | "air-conditioner" | "air-purifier" | "humidifier"
+  | "tv" | "air-conditioner" | "air-purifier" | "humidifier" | "monitor-stand" | "monitor-arm"
   // Fixtures
   | "sink" | "toilet" | "bathtub" | "shower"
   // Custom

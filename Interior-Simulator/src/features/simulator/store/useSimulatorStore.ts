@@ -217,7 +217,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       category = preset.category;
     } else if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
       category = "appliance";
-    } else if (["tv", "air-conditioner", "air-purifier", "humidifier"].includes(type)) {
+    } else if (["tv", "air-conditioner", "air-purifier", "humidifier", "monitor-stand", "monitor-arm"].includes(type)) {
       category = "electronics";
     } else if (["sink", "toilet", "bathtub", "shower"].includes(type)) {
       category = "fixture";

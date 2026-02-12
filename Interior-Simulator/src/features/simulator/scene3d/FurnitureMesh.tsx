@@ -1418,6 +1418,326 @@ function ClosetMesh({
   );
 }
 
+function MonitorStandMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  const metalColor = "#888888";
+  const screenColor = "#1a1a1a";
+  const bezelColor = "#222222";
+
+  // Base / riser platform
+  const baseH = height * 0.12;
+  const baseW = width;
+  const baseD = depth;
+
+  // Neck (vertical support behind monitor)
+  const neckW = width * 0.08;
+  const neckT = depth * 0.06;
+  const neckH = height * 0.2;
+  const neckBottomY = baseH;
+
+  // Monitor panel
+  const monitorW = width * 0.92;
+  const monitorH = height * 0.6;
+  const monitorT = 18; // thin panel
+  const monitorBottomY = neckBottomY + neckH * 0.3;
+  const monitorCenterY = monitorBottomY + monitorH / 2;
+
+  // Bezel (chin at bottom of monitor)
+  const bezelH = height * 0.04;
+  const bezelCenterY = monitorBottomY + bezelH / 2;
+
+  // Tilt angle (~5 degrees backward)
+  const tiltAngle = -0.087; // ~5 degrees in radians
+
+  // Monitor Z position (centered on base, slightly back)
+  const monitorZ = -depth * 0.1;
+
+  return (
+    <>
+      {/* Base platform (riser) */}
+      <mesh position={[0, baseH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[baseW, baseH, baseD]} />
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
+      </mesh>
+
+      {/* Neck (support post) */}
+      <mesh
+        position={[0, neckBottomY + neckH / 2, monitorZ]}
+        castShadow
+      >
+        <boxGeometry args={[neckW, neckH, neckT]} />
+        <meshStandardMaterial color={metalColor} metalness={0.4} roughness={0.4} />
+      </mesh>
+
+      {/* Monitor group (tilted) */}
+      <group
+        position={[0, monitorCenterY, monitorZ]}
+        rotation={[tiltAngle, 0, 0]}
+      >
+        {/* Monitor panel (screen) */}
+        <mesh castShadow>
+          <boxGeometry args={[monitorW, monitorH, monitorT]} />
+          <meshStandardMaterial color={screenColor} />
+        </mesh>
+
+        {/* Screen surface (slightly inset, dark) */}
+        <mesh position={[0, bezelH / 2, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+        </mesh>
+
+        {/* Bottom bezel (chin) */}
+        <mesh position={[0, -monitorH / 2 + bezelH / 2, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.3, bezelH, 1]} />
+          <meshStandardMaterial color={bezelColor} />
+        </mesh>
+      </group>
+    </>
+  );
+}
+
+function MonitorArmPoleMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  const metalColor = "#666666";
+  const darkColor = "#333333";
+  const screenColor = "#1a1a1a";
+
+  // Clamp base (sits on desk edge)
+  const clampW = width * 0.6;
+  const clampD = depth * 0.15;
+  const clampH = height * 0.06;
+
+  // Vertical pole
+  const poleR = width * 0.12;
+  const poleH = height * 0.55;
+  const poleBottomY = clampH;
+
+  // Short horizontal arm
+  const armW = depth * 0.35;
+  const armH = poleR * 1.2;
+  const armD = poleR * 1.2;
+  const armY = poleBottomY + poleH * 0.85;
+
+  // Joint (between arm and VESA mount)
+  const jointR = poleR * 0.8;
+  const jointH = armD * 0.6;
+
+  // VESA mount plate
+  const vesaW = 8;
+  const vesaH = height * 0.12;
+  const vesaD = depth * 0.15;
+
+  // Monitor panel
+  const monitorW = depth * 0.85;
+  const monitorH = height * 0.45;
+  const monitorT = 16;
+  const monitorZ = armW / 2 + vesaW + monitorT / 2;
+
+  // Tilt
+  const tiltAngle = -0.087;
+
+  return (
+    <>
+      {/* Desk clamp base */}
+      <mesh position={[0, clampH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[clampW, clampH, clampD]} />
+        <meshStandardMaterial color={darkColor} metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* Vertical pole */}
+      <mesh position={[0, poleBottomY + poleH / 2, 0]} castShadow>
+        <cylinderGeometry args={[poleR, poleR, poleH, 16]} />
+        <meshStandardMaterial color={metalColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* Horizontal arm */}
+      <mesh position={[0, armY, armW / 4]} castShadow>
+        <boxGeometry args={[armD, armH, armW]} />
+        <meshStandardMaterial color={metalColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* Joint */}
+      <mesh
+        position={[0, armY, armW / 2]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <cylinderGeometry args={[jointR, jointR, jointH, 12]} />
+        <meshStandardMaterial color={darkColor} metalness={0.4} roughness={0.4} />
+      </mesh>
+
+      {/* VESA mount plate */}
+      <mesh position={[0, armY, armW / 2 + vesaW / 2]}>
+        <boxGeometry args={[vesaD, vesaH, vesaW]} />
+        <meshStandardMaterial color={darkColor} metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* Monitor (tilted) */}
+      <group
+        position={[0, armY, monitorZ]}
+        rotation={[tiltAngle, 0, 0]}
+      >
+        <mesh castShadow>
+          <boxGeometry args={[monitorW, monitorH, monitorT]} />
+          <meshStandardMaterial color={screenColor} />
+        </mesh>
+
+        {/* Screen surface */}
+        <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+        </mesh>
+
+        {/* Chin bezel */}
+        <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
+          <meshStandardMaterial color={darkColor} />
+        </mesh>
+      </group>
+    </>
+  );
+}
+
+function MonitorArmClampMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  const metalColor = "#666666";
+  const darkColor = "#333333";
+  const screenColor = "#1a1a1a";
+
+  // Desk clamp
+  const clampW = width * 0.7;
+  const clampD = depth * 0.12;
+  const clampH = height * 0.06;
+
+  // Lower arm segment (goes up then forward)
+  const lowerArmLen = height * 0.4;
+  const armThick = width * 0.25;
+
+  // Joint between arms
+  const jointR = armThick * 0.6;
+
+  // Upper arm segment (horizontal, forward)
+  const upperArmLen = depth * 0.4;
+
+  // Monitor
+  const monitorW = depth * 0.85;
+  const monitorH = height * 0.5;
+  const monitorT = 16;
+
+  // VESA plate
+  const vesaW = 8;
+  const vesaH = height * 0.12;
+  const vesaD = depth * 0.12;
+
+  // Lower arm angle (tilted forward ~70 degrees from vertical)
+  const lowerArmAngle = 0.35; // ~20 degrees from vertical
+  const lowerArmTopY = clampH + lowerArmLen * Math.cos(lowerArmAngle);
+  const lowerArmTopZ = lowerArmLen * Math.sin(lowerArmAngle);
+
+  // Upper arm
+  const upperArmY = lowerArmTopY;
+  const upperArmEndZ = lowerArmTopZ + upperArmLen;
+
+  const tiltAngle = -0.087;
+
+  return (
+    <>
+      {/* Desk clamp */}
+      <mesh position={[0, clampH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[clampW, clampH, clampD]} />
+        <meshStandardMaterial color={darkColor} metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* Lower arm segment (angled upward and forward) */}
+      <mesh
+        position={[
+          0,
+          clampH + lowerArmTopY / 2 - clampH / 2,
+          lowerArmTopZ / 2,
+        ]}
+        rotation={[lowerArmAngle, 0, 0]}
+        castShadow
+      >
+        <boxGeometry args={[armThick, lowerArmLen, armThick]} />
+        <meshStandardMaterial color={metalColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* Joint (elbow) */}
+      <mesh
+        position={[0, upperArmY, lowerArmTopZ]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <cylinderGeometry args={[jointR, jointR, armThick * 0.8, 12]} />
+        <meshStandardMaterial color={darkColor} metalness={0.4} roughness={0.4} />
+      </mesh>
+
+      {/* Upper arm segment (horizontal, forward) */}
+      <mesh
+        position={[0, upperArmY, lowerArmTopZ + upperArmLen / 2]}
+        castShadow
+      >
+        <boxGeometry args={[armThick, armThick, upperArmLen]} />
+        <meshStandardMaterial color={metalColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* VESA mount plate */}
+      <mesh position={[0, upperArmY, upperArmEndZ + vesaW / 2]}>
+        <boxGeometry args={[vesaD, vesaH, vesaW]} />
+        <meshStandardMaterial color={darkColor} metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* Monitor (tilted) */}
+      <group
+        position={[0, upperArmY, upperArmEndZ + vesaW + monitorT / 2]}
+        rotation={[tiltAngle, 0, 0]}
+      >
+        <mesh castShadow>
+          <boxGeometry args={[monitorW, monitorH, monitorT]} />
+          <meshStandardMaterial color={screenColor} />
+        </mesh>
+
+        {/* Screen surface */}
+        <mesh position={[0, monitorH * 0.02, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.93, monitorH * 0.9, 1]} />
+          <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.1} />
+        </mesh>
+
+        {/* Chin bezel */}
+        <mesh position={[0, -monitorH / 2 + monitorH * 0.03, monitorT / 2 + 0.5]}>
+          <boxGeometry args={[monitorW * 0.25, monitorH * 0.04, 1]} />
+          <meshStandardMaterial color={darkColor} />
+        </mesh>
+      </group>
+    </>
+  );
+}
+
 export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const color = item.color ?? DEFAULT_FURNITURE_COLOR;
   const rotationY = -(item.rotation * Math.PI) / 180;
@@ -1439,17 +1759,40 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
     );
   }
 
+  if (item.type === "monitor-arm") {
+    const Mesh = item.name.includes("기둥") ? MonitorArmPoleMesh : MonitorArmClampMesh;
+    return (
+      <group
+        position={[
+          item.x + item.width / 2,
+          0,
+          item.y + item.depth / 2,
+        ]}
+        rotation={[0, rotationY, 0]}
+      >
+        <Mesh
+          width={item.width}
+          depth={item.depth}
+          height={item.height}
+          color={color}
+        />
+      </group>
+    );
+  }
+
   if (
     item.type === "bed" ||
     item.type === "bookshelf" ||
     item.type === "chair" ||
-    item.type === "desk"
+    item.type === "desk" ||
+    item.type === "monitor-stand"
   ) {
     const meshMap = {
       bed: BedMesh,
       bookshelf: BookshelfMesh,
       chair: ChairMesh,
       desk: DeskMesh,
+      "monitor-stand": MonitorStandMesh,
     } as const;
     const Mesh = meshMap[item.type as keyof typeof meshMap];
     return (
