@@ -13,28 +13,36 @@ export function Scene3D() {
   const windows = useSimulatorStore((state) => state.windows);
 
   return (
-    <div style={{ width: "100%", height: "100%", background: "#2a2a2a" }}>
-      <Canvas shadows gl={{ preserveDrawingBuffer: true }}>
-        {/* Camera */}
-        <PerspectiveCamera
-          makeDefault
-          position={[room.width * 1.5, room.ceilingHeight * 1.5, room.height * 1.5]}
-          fov={50}
-        />
+    <div style={{ width: "100%", height: "100%", background: "lime" }}>
+      <Canvas
+        style={{ width: "100%", height: "100%" }}
+        camera={{ position: [5, 5, 5], fov: 50 }}
+        gl={{
+          antialias: true,
+          alpha: false,
+        }}
+      >
+        {/* 배경색 */}
+        <color attach="background" args={["#87CEEB"]} />
 
         {/* Lights */}
-        <ambientLight intensity={0.8} />
-        <directionalLight
-          position={[room.width / 2, room.ceilingHeight * 2, room.height / 2]}
-          intensity={0.8}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
-        <pointLight
-          position={[room.width / 2, room.ceilingHeight, room.height / 2]}
-          intensity={0.5}
-        />
+        <ambientLight intensity={1} />
+        <directionalLight position={[10, 10, 5]} intensity={1} />
+
+        {/* Test Cube - 원점에 배치 */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial color="red" />
+        </mesh>
+
+        {/* 바닥 */}
+        <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[10, 10]} />
+          <meshStandardMaterial color="green" />
+        </mesh>
+
+        {/* Controls */}
+        <OrbitControls />
 
         {/* Room */}
         <RoomMesh room={room} />

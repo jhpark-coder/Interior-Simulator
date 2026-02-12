@@ -4,6 +4,7 @@ import { InspectorPanel } from "./components/InspectorPanel";
 import { PalettePanel } from "./components/PalettePanel";
 import { Toolbar } from "./components/Toolbar";
 import { Scene3D } from "./scene3d/Scene3D";
+import { Scene3DTest } from "./scene3d/Scene3DTest";
 import { useSimulatorStore } from "./store/useSimulatorStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useAutoSave } from "./hooks/useAutoSave";
@@ -59,14 +60,14 @@ export function SimulatorPage() {
         </aside>
         <main className="sim-canvas">
           {viewMode === "2d" && <Canvas2D />}
-          {viewMode === "3d" && <Scene3D />}
+          {viewMode === "3d" && <Scene3DTest />}
           {viewMode === "split" && (
             <div style={{ display: "flex", width: "100%", height: "100%", gap: "1rem" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Canvas2D />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Scene3D />
+                <Scene3DTest />
               </div>
             </div>
           )}
