@@ -28,7 +28,7 @@ export type ItemCategory = "furniture" | "appliance" | "electronics" | "fixture"
 
 export type FurnitureType =
   // Furniture
-  | "bed" | "desk" | "chair" | "closet" | "sofa" | "table"
+  | "bed" | "desk" | "chair" | "closet" | "display-cabinet" | "bookshelf" | "sofa" | "table"
   // Appliances
   | "refrigerator" | "washing-machine" | "dryer" | "dishwasher" | "oven" | "microwave"
   // Electronics

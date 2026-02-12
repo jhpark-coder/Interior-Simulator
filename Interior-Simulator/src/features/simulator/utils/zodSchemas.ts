@@ -31,6 +31,8 @@ export const FurnitureTypeSchema = z.enum([
   "desk",
   "chair",
   "closet",
+  "display-cabinet",
+  "bookshelf",
   "sofa",
   "table",
 ]);

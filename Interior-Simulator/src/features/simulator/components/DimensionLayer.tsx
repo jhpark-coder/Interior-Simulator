@@ -238,17 +238,17 @@ export function DimensionLayer({
 
   const dimensions: React.JSX.Element[] = [];
 
-  // 방 외부 치수선
-  // 상단 수평 치수 (전체 너비)
+  // 방 외부 치수선 (내부 치수 기준: 0 ~ room.width, 0 ~ room.height)
+  // 수평 치수 (전체 너비)
   dimensions.push(
     <Group key="room-width-ext">
       <Line
-        points={[roomLeft, roomHorizontalAnchorY, roomLeft, roomHorizontalDimY]}
+        points={[0, roomHorizontalAnchorY, 0, roomHorizontalDimY]}
         stroke={lineColor}
         strokeWidth={lineWidth}
       />
       <Line
-        points={[roomRight, roomHorizontalAnchorY, roomRight, roomHorizontalDimY]}
+        points={[room.width, roomHorizontalAnchorY, room.width, roomHorizontalDimY]}
         stroke={lineColor}
         strokeWidth={lineWidth}
       />
@@ -256,8 +256,8 @@ export function DimensionLayer({
   );
   dimensions.push(
     drawHorizontalDimension(
-      roomLeft,
-      roomRight,
+      0,
+      room.width,
       roomHorizontalDimY,
       `${room.width} mm`,
       "room-width",
@@ -265,16 +265,16 @@ export function DimensionLayer({
     )
   );
 
-  // 좌측 수직 치수 (전체 높이)
+  // 수직 치수 (전체 높이)
   dimensions.push(
     <Group key="room-height-ext">
       <Line
-        points={[roomVerticalAnchorX, roomTop, roomVerticalDimX, roomTop]}
+        points={[roomVerticalAnchorX, 0, roomVerticalDimX, 0]}
         stroke={lineColor}
         strokeWidth={lineWidth}
       />
       <Line
-        points={[roomVerticalAnchorX, roomBottom, roomVerticalDimX, roomBottom]}
+        points={[roomVerticalAnchorX, room.height, roomVerticalDimX, room.height]}
         stroke={lineColor}
         strokeWidth={lineWidth}
       />
@@ -282,8 +282,8 @@ export function DimensionLayer({
   );
   dimensions.push(
     drawVerticalDimension(
-      roomTop,
-      roomBottom,
+      0,
+      room.height,
       roomVerticalDimX,
       `${room.height} mm`,
       "room-height",

@@ -23,6 +23,8 @@ export const FURNITURE_CATALOG: Record<
   desk: { label: "책상", width: 1200, depth: 600, height: 720 },
   chair: { label: "의자", width: 450, depth: 450, height: 900 },
   closet: { label: "수납장", width: 1200, depth: 600, height: 2000 },
+  "display-cabinet": { label: "장식장", width: 430, depth: 370, height: 1630 },
+  bookshelf: { label: "책장", width: 800, depth: 285, height: 1573 },
   sofa: { label: "소파", width: 1800, depth: 900, height: 800 },
   table: { label: "테이블", width: 1200, depth: 800, height: 750 },
   refrigerator: { label: "냉장고", width: 800, depth: 700, height: 1800 },
@@ -230,6 +232,34 @@ export const ITEM_CATALOG: ItemDefinition[] = [
     height: 2300,
     tags: ["수납", "침실", "붙박이"],
     keywords: ["closet", "built-in", "수납장", "옷장", "붙박이"],
+  },
+
+  // ===== Furniture - Display Cabinets =====
+  {
+    id: "display-cabinet-4tier",
+    type: "display-cabinet",
+    category: "furniture",
+    label: "4단 유리 장식장",
+    name: "4단 유리 장식장",
+    width: 430,
+    depth: 370,
+    height: 1630,
+    tags: ["장식장", "거실", "유리", "진열"],
+    keywords: ["display cabinet", "glass cabinet", "장식장", "진열장", "유리장"],
+  },
+
+  // ===== Furniture - Bookshelves =====
+  {
+    id: "bookshelf-4tier-80",
+    type: "bookshelf",
+    category: "furniture",
+    label: "4단 책장 80cm",
+    name: "4단 책장 80cm",
+    width: 800,
+    depth: 285,
+    height: 1573,
+    tags: ["책장", "서재", "수납", "오픈"],
+    keywords: ["bookshelf", "shelf", "책장", "책꽂이", "4단"],
   },
 
   // ===== Furniture - Sofas =====

@@ -29,6 +29,8 @@ const CATEGORY_TYPES: Record<ItemCategory, { type: FurnitureType; label: string 
     { type: "desk", label: "책상" },
     { type: "chair", label: "의자" },
     { type: "closet", label: "수납장" },
+    { type: "display-cabinet", label: "장식장" },
+    { type: "bookshelf", label: "책장" },
     { type: "sofa", label: "소파" },
     { type: "table", label: "테이블" },
   ],
