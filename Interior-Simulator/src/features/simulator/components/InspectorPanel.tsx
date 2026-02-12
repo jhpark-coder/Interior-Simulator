@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import "./InspectorPanel.css";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import type { Room, WallSide } from "../types";
@@ -10,6 +11,45 @@ const wallLabels: Record<WallSide, string> = {
   west: "서쪽",
 };
 
+function DeferredNumberInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  const [localValue, setLocalValue] = useState(String(value));
+
+  useEffect(() => {
+    setLocalValue(String(value));
+  }, [value]);
+
+  const commit = useCallback(() => {
+    const num = Number(localValue);
+    if (!Number.isNaN(num)) {
+      onChange(num);
+    } else {
+      setLocalValue(String(value));
+    }
+  }, [localValue, onChange, value]);
+
+  return (
+    <input
+      type="number"
+      value={localValue}
+      min={0}
+      step={10}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 const numberField = (
   label: string,
   value: number,
@@ -17,13 +57,7 @@ const numberField = (
 ) => (
   <label className="inspector-field">
     <span>{label}</span>
-    <input
-      type="number"
-      value={value}
-      min={0}
-      step={10}
-      onChange={(event) => onChange(Number(event.target.value))}
-    />
+    <DeferredNumberInput value={value} onChange={onChange} />
   </label>
 );
 
