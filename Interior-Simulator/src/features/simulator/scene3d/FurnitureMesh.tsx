@@ -235,6 +235,113 @@ function BookshelfMesh({
   );
 }
 
+function DeskMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  // Tabletop
+  const topT = Math.max(23, height * 0.032);
+  const topY = height - topT / 2;
+
+  // Leg dimensions
+  const legW = Math.max(55, width * 0.04);
+  const legD = legW;
+
+  // Foot (horizontal bar on floor, runs along Z / depth)
+  const footLength = depth * 0.95;
+  const footH = Math.max(18, height * 0.025);
+  const footW = legW * 1.2;
+  const padW = footW + 10;
+  const padH = 5;
+  const padD = 28;
+
+  // Vertical column
+  const columnH = height - topT - footH;
+  const columnY = footH + columnH / 2;
+
+  // Leg X positions (inset from edges)
+  const legInset = width * 0.1;
+  const legX1 = -width / 2 + legInset + legW / 2;
+  const legX2 = width / 2 - legInset - legW / 2;
+
+  // Upper bracket (horizontal arm under tabletop, runs along Z)
+  const bracketLength = depth * 0.74;
+  const bracketH = Math.max(28, height * 0.04);
+  const bracketW = legW * 0.9;
+  const bracketY = height - topT - bracketH / 2;
+
+  // Control panel (front-right, under tabletop)
+  const panelW = Math.min(120, width * 0.1);
+  const panelH = 22;
+  const panelD = 32;
+
+  const metalColor = "#d0d0d0";
+  const darkColor = "#333333";
+
+  return (
+    <>
+      {/* Tabletop */}
+      <mesh position={[0, topY, 0]} castShadow receiveShadow>
+        <boxGeometry args={[width, topT, depth]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+
+      {/* Two T-leg assemblies */}
+      {[legX1, legX2].map((lx, i) => (
+        <group key={`leg-${i}`}>
+          {/* Foot (floor bar) */}
+          <mesh position={[lx, footH / 2, 0]} receiveShadow>
+            <boxGeometry args={[footW, footH, footLength]} />
+            <meshStandardMaterial color={metalColor} metalness={0.3} roughness={0.5} />
+          </mesh>
+
+          {/* Rubber pads at foot ends */}
+          {([-1, 1] as const).map((side) => (
+            <mesh
+              key={`pad-${side}`}
+              position={[lx, padH / 2, side * (footLength / 2 - padD / 2)]}
+            >
+              <boxGeometry args={[padW, padH, padD]} />
+              <meshStandardMaterial color={darkColor} />
+            </mesh>
+          ))}
+
+          {/* Vertical column */}
+          <mesh position={[lx, columnY, 0]}>
+            <boxGeometry args={[legW, columnH, legD]} />
+            <meshStandardMaterial color={metalColor} metalness={0.3} roughness={0.5} />
+          </mesh>
+
+          {/* Upper bracket (under tabletop) */}
+          <mesh position={[lx, bracketY, 0]}>
+            <boxGeometry args={[bracketW, bracketH, bracketLength]} />
+            <meshStandardMaterial color={metalColor} metalness={0.3} roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Control panel (front-right underside) */}
+      <mesh
+        position={[
+          width / 4,
+          height - topT - panelH / 2,
+          depth / 2 - panelD / 2 - 10,
+        ]}
+      >
+        <boxGeometry args={[panelW, panelH, panelD]} />
+        <meshStandardMaterial color={darkColor} />
+      </mesh>
+    </>
+  );
+}
+
 function DisplayCabinetMesh({
   item,
   color,
@@ -470,6 +577,178 @@ function DisplayCabinetMesh({
           </mesh>
         </group>
       </group>
+    </>
+  );
+}
+
+function ChairMesh({
+  width,
+  depth,
+  height,
+  color,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+}) {
+  const gap = 2;
+
+  // Key proportions (based on IKEA GRUPPSPEL gaming chair)
+  const seatSurfaceY = height * 0.36;
+  const seatW = width * 0.77;
+  const seatD = depth * 0.75;
+  const seatT = Math.max(height * 0.05, 30);
+  const seatOffsetZ = depth * 0.05; // seat slightly forward
+
+  // 5-star base
+  const casterR = Math.min(25, width * 0.04);
+  const starR = width * 0.42;
+  const armT = Math.max(15, width * 0.025);
+  const armW = Math.max(20, width * 0.03);
+  const hubR = Math.max(35, width * 0.06);
+  const baseY = casterR + armT / 2;
+
+  // Gas lift
+  const cylinderR = Math.max(20, width * 0.035);
+  const cylinderBottom = baseY + armT / 2 + gap;
+  const cylinderTop = seatSurfaceY - 15;
+  const cylinderH = Math.max(cylinderTop - cylinderBottom, 10);
+
+  // Backrest
+  const backrestH = height * 0.40;
+  const backrestW = seatW * 0.88;
+  const backrestT = Math.max(seatT * 0.6, 25);
+  const backrestBottomY = seatSurfaceY + seatT;
+  const backrestCenterZ = -seatD / 2 + seatOffsetZ + backrestT / 2;
+  const tiltAngle = 0.12; // ~7 degrees backward tilt
+
+  // Headrest
+  const headrestH = height * 0.065;
+  const headrestW = backrestW * 0.52;
+  const headrestT = backrestT * 1.3;
+  const headrestGap = height * 0.02;
+  const headrestLocalY = backrestH + headrestGap + headrestH / 2;
+
+  // Armrests
+  const armrestPadW = Math.max(width * 0.08, 40);
+  const armrestPadD = depth * 0.32;
+  const armrestPadT = 15;
+  const armrestSupportW = Math.max(width * 0.04, 20);
+  const armrestSupportH = height * 0.11;
+  const armrestY = seatSurfaceY + armrestSupportH;
+  const armrestX = seatW / 2 + armrestSupportW / 2 + gap;
+
+  // Accent
+  const accentColor = "#cc2222";
+  const stripeW = Math.max(width * 0.08, 40);
+  const darkColor = "#333333";
+
+  return (
+    <>
+      {/* ===== 5-Star Base ===== */}
+      <mesh position={[0, baseY, 0]}>
+        <cylinderGeometry args={[hubR, hubR, armT, 16]} />
+        <meshStandardMaterial color={darkColor} metalness={0.4} roughness={0.4} />
+      </mesh>
+
+      {Array.from({ length: 5 }, (_, i) => {
+        const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const tipX = Math.cos(angle) * starR;
+        const tipZ = Math.sin(angle) * starR;
+        return (
+          <group key={`base-${i}`}>
+            {/* Arm */}
+            <mesh
+              position={[tipX / 2, baseY, tipZ / 2]}
+              rotation={[0, -angle, 0]}
+            >
+              <boxGeometry args={[starR, armT, armW]} />
+              <meshStandardMaterial color={darkColor} metalness={0.4} roughness={0.4} />
+            </mesh>
+            {/* Caster wheel */}
+            <mesh
+              position={[tipX, casterR, tipZ]}
+              rotation={[0, angle, Math.PI / 2]}
+            >
+              <cylinderGeometry args={[casterR, casterR, casterR * 0.8, 10]} />
+              <meshStandardMaterial color={darkColor} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* Gas lift cylinder */}
+      <mesh position={[0, cylinderBottom + cylinderH / 2, 0]}>
+        <cylinderGeometry args={[cylinderR, cylinderR, cylinderH, 10]} />
+        <meshStandardMaterial color={darkColor} metalness={0.6} roughness={0.3} />
+      </mesh>
+
+      {/* ===== Seat ===== */}
+      <mesh
+        position={[0, seatSurfaceY + seatT / 2, seatOffsetZ]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[seatW, seatT, seatD]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {/* Red accent stripe on seat */}
+      <mesh position={[0, seatSurfaceY + seatT / 2 + gap, seatOffsetZ]}>
+        <boxGeometry args={[stripeW, seatT + gap, seatD * 0.75]} />
+        <meshStandardMaterial color={accentColor} />
+      </mesh>
+
+      {/* ===== Backrest (tilted backward) ===== */}
+      <group
+        position={[0, backrestBottomY, backrestCenterZ]}
+        rotation={[tiltAngle, 0, 0]}
+      >
+        <mesh position={[0, backrestH / 2, 0]} castShadow>
+          <boxGeometry args={[backrestW, backrestH, backrestT]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+        {/* Red stripe on backrest */}
+        <mesh position={[0, backrestH / 2, gap]}>
+          <boxGeometry args={[stripeW, backrestH * 0.85, backrestT + gap]} />
+          <meshStandardMaterial color={accentColor} />
+        </mesh>
+
+        {/* ===== Headrest ===== */}
+        <mesh position={[0, headrestLocalY, 0]} castShadow>
+          <boxGeometry args={[headrestW, headrestH, headrestT]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      </group>
+
+      {/* ===== Armrests ===== */}
+      {([-1, 1] as const).map((side) => (
+        <group key={`arm-${side}`}>
+          {/* Vertical support */}
+          <mesh
+            position={[
+              side * armrestX,
+              seatSurfaceY + armrestSupportH / 2,
+              0,
+            ]}
+          >
+            <boxGeometry args={[armrestSupportW, armrestSupportH, armrestSupportW]} />
+            <meshStandardMaterial color={darkColor} metalness={0.4} roughness={0.4} />
+          </mesh>
+          {/* Armrest pad (T-shape top) */}
+          <mesh
+            position={[
+              side * armrestX,
+              armrestY,
+              seatOffsetZ,
+            ]}
+            castShadow
+          >
+            <boxGeometry args={[armrestPadW, armrestPadT, armrestPadD]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+        </group>
+      ))}
     </>
   );
 }
@@ -1160,8 +1439,19 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
     );
   }
 
-  if (item.type === "bed" || item.type === "bookshelf") {
-    const Mesh = item.type === "bed" ? BedMesh : BookshelfMesh;
+  if (
+    item.type === "bed" ||
+    item.type === "bookshelf" ||
+    item.type === "chair" ||
+    item.type === "desk"
+  ) {
+    const meshMap = {
+      bed: BedMesh,
+      bookshelf: BookshelfMesh,
+      chair: ChairMesh,
+      desk: DeskMesh,
+    } as const;
+    const Mesh = meshMap[item.type as keyof typeof meshMap];
     return (
       <group
         position={[

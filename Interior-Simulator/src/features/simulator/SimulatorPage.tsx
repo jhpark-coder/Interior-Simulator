@@ -53,7 +53,7 @@ export function SimulatorPage() {
         </div>
       </header>
       <Toolbar />
-      <div className="sim-body">
+      <div className="sim-body" data-view={viewMode}>
         <aside className="sim-panel sim-left">
           <PalettePanel />
         </aside>
@@ -71,9 +71,11 @@ export function SimulatorPage() {
             </div>
           )}
         </main>
-        <aside className="sim-panel sim-right">
-          <InspectorPanel />
-        </aside>
+        {viewMode !== "3d" && (
+          <aside className="sim-panel sim-right">
+            <InspectorPanel />
+          </aside>
+        )}
       </div>
     </div>
   );

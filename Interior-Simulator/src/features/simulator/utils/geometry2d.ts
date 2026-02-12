@@ -131,54 +131,121 @@ function projectPolygon(
 }
 
 /**
- * Checks if two furniture items are overlapping using Separating Axis Theorem (SAT)
+ * Returns the height of free space underneath the item (e.g. under a desk tabletop).
+ */
+function getClearanceHeight(item: FurnitureItem): number {
+  switch (item.type) {
+    case "desk":
+    case "table":
+      return item.height - 25; // tabletop ~25mm thick
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Returns the height of the portion that can tuck under another item
+ * (e.g. a chair's base+armrests, excluding the tall backrest).
+ */
+function getTuckHeight(item: FurnitureItem): number {
+  switch (item.type) {
+    case "chair":
+      return item.height * 0.47; // up to armrest height
+    default:
+      return item.height;
+  }
+}
+
+/**
+ * SAT collision check between two sets of corners.
+ */
+function checkCornersCollision(
+  corners1: { x: number; y: number }[],
+  corners2: { x: number; y: number }[],
+): boolean {
+  const axes: { x: number; y: number }[] = [];
+
+  for (const corners of [corners1, corners2]) {
+    for (let i = 0; i < corners.length; i++) {
+      const edge = {
+        x: corners[(i + 1) % corners.length].x - corners[i].x,
+        y: corners[(i + 1) % corners.length].y - corners[i].y,
+      };
+      const length = Math.sqrt(edge.x * edge.x + edge.y * edge.y);
+      if (length > 0) {
+        axes.push({ x: -edge.y / length, y: edge.x / length });
+      }
+    }
+  }
+
+  for (const axis of axes) {
+    const p1 = projectPolygon(corners1, axis);
+    const p2 = projectPolygon(corners2, axis);
+    if (p1.max < p2.min || p2.max < p1.min) return false;
+  }
+  return true;
+}
+
+/**
+ * Returns the rotated corners of the backrest zone (back ~25% of chair depth).
+ * The backrest is the tall portion that cannot fit under a desk.
+ */
+function getBackrestCorners(item: FurnitureItem): { x: number; y: number }[] | null {
+  if (item.type !== "chair") return null;
+
+  const backrestRatio = 0.25;
+  const backrestD = item.depth * backrestRatio;
+
+  const rad = degToRad(item.rotation);
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const cx = item.x + item.width / 2;
+  const cy = item.y + item.depth / 2;
+
+  // Backrest is at the back of the chair (negative local Y direction)
+  const localCY = -item.depth / 2 + backrestD / 2;
+  const hw = item.width / 2;
+  const hd = backrestD / 2;
+
+  const local = [
+    { x: -hw, y: localCY - hd },
+    { x: hw, y: localCY - hd },
+    { x: hw, y: localCY + hd },
+    { x: -hw, y: localCY + hd },
+  ];
+
+  return local.map((c) => ({
+    x: cx + c.x * cos - c.y * sin,
+    y: cy + c.x * sin + c.y * cos,
+  }));
+}
+
+/**
+ * Checks if two furniture items are overlapping using Separating Axis Theorem (SAT).
+ * When a chair can tuck under a desk/table, only the backrest zone is checked for collision.
  */
 export function checkFurnitureCollision(
   item1: FurnitureItem,
   item2: FurnitureItem
 ): boolean {
-  const corners1 = getRotatedCorners(item1);
-  const corners2 = getRotatedCorners(item2);
-
-  // Get axes to test (perpendicular to edges of both rectangles)
-  const axes: { x: number; y: number }[] = [];
-
-  // Axes from item1
-  for (let i = 0; i < 4; i++) {
-    const edge = {
-      x: corners1[(i + 1) % 4].x - corners1[i].x,
-      y: corners1[(i + 1) % 4].y - corners1[i].y,
-    };
-    const length = Math.sqrt(edge.x * edge.x + edge.y * edge.y);
-    // Perpendicular axis (normalized)
-    axes.push({ x: -edge.y / length, y: edge.x / length });
-  }
-
-  // Axes from item2
-  for (let i = 0; i < 4; i++) {
-    const edge = {
-      x: corners2[(i + 1) % 4].x - corners2[i].x,
-      y: corners2[(i + 1) % 4].y - corners2[i].y,
-    };
-    const length = Math.sqrt(edge.x * edge.x + edge.y * edge.y);
-    // Perpendicular axis (normalized)
-    axes.push({ x: -edge.y / length, y: edge.x / length });
-  }
-
-  // Test each axis
-  for (const axis of axes) {
-    const projection1 = projectPolygon(corners1, axis);
-    const projection2 = projectPolygon(corners2, axis);
-
-    // Check if projections overlap
-    if (projection1.max < projection2.min || projection2.max < projection1.min) {
-      // Found a separating axis, no collision
-      return false;
+  // Height-aware: if one item's low portion fits under the other's clearance,
+  // only check the tall portion (backrest) against the other item.
+  if (getTuckHeight(item1) <= getClearanceHeight(item2)) {
+    const backrest = getBackrestCorners(item1);
+    if (backrest) {
+      return checkCornersCollision(backrest, getRotatedCorners(item2));
     }
+    return false;
+  }
+  if (getTuckHeight(item2) <= getClearanceHeight(item1)) {
+    const backrest = getBackrestCorners(item2);
+    if (backrest) {
+      return checkCornersCollision(getRotatedCorners(item1), backrest);
+    }
+    return false;
   }
 
-  // No separating axis found, collision detected
-  return true;
+  return checkCornersCollision(getRotatedCorners(item1), getRotatedCorners(item2));
 }
 
 /**

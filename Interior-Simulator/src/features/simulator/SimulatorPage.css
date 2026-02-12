@@ -57,6 +57,10 @@
   padding: 18px;
 }
 
+.sim-body[data-view="3d"] {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
 .sim-panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
