@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { Layer, Rect, Text, Group, Circle, Line } from "react-konva";
 import type Konva from "konva";
 import type { FurnitureItem, Room, SelectedEntity } from "../types";
-import { snapPosition, constrainToRoom, checkCollisionWithOthers, getCollisionPolygons, degToRad } from "../utils";
+import { snapPosition, constrainToRoom, checkCollisionWithOthers, getCollisionPolygons, degToRad, buildAttachmentExcludeIds } from "../utils";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 
@@ -404,6 +404,28 @@ export function FurnitureLayer({
 }: FurnitureLayerProps) {
   return (
     <Layer>
+      {/* Attachment connection lines */}
+      {furniture
+        .filter((item) => item.parentId && item.id !== placingFurnitureId)
+        .map((child) => {
+          const parent = furniture.find((f) => f.id === child.parentId);
+          if (!parent || parent.id === placingFurnitureId) return null;
+          const childCx = child.x + child.width / 2;
+          const childCy = child.y + child.depth / 2;
+          const parentCx = parent.x + parent.width / 2;
+          const parentCy = parent.y + parent.depth / 2;
+          return (
+            <Line
+              key={`attach-${child.id}`}
+              points={[childCx, childCy, parentCx, parentCy]}
+              stroke="#e67e22"
+              strokeWidth={2}
+              dash={[6, 4]}
+              opacity={0.6}
+              listening={false}
+            />
+          );
+        })}
       {furniture
         .filter((item) => item.id !== placingFurnitureId)
         .map((item) => (
@@ -483,9 +505,10 @@ function FurnitureItem({
     x = constrained.x;
     y = constrained.y;
 
-    // Check collision with other furniture
+    // Check collision with other furniture (exclude parent/children/siblings)
+    const excludeIds = buildAttachmentExcludeIds(item.id, allFurniture);
     const testItem = { ...item, x, y };
-    if (checkCollisionWithOthers(testItem, allFurniture)) {
+    if (checkCollisionWithOthers(testItem, allFurniture, excludeIds)) {
       // Collision detected, revert to last valid position
       node.position({
         x: lastValidPos.x + halfWidth,
@@ -523,9 +546,10 @@ function FurnitureItem({
     const rotationStep = e.evt.shiftKey ? 1 : 15;
     const newRotation = (item.rotation + delta * rotationStep) % 360;
 
-    // Check collision with new rotation
+    // Check collision with new rotation (exclude parent/children/siblings)
+    const excludeIds = buildAttachmentExcludeIds(item.id, allFurniture);
     const testItem = { ...item, rotation: newRotation };
-    if (checkCollisionWithOthers(testItem, allFurniture)) {
+    if (checkCollisionWithOthers(testItem, allFurniture, excludeIds)) {
       // Collision detected, don't rotate
       return;
     }
@@ -564,9 +588,10 @@ function FurnitureItem({
         width={item.width}
         height={item.depth}
         fill="transparent"
-        stroke={isSelected ? "#4A90E2" : DEFAULT_FURNITURE_STROKE}
-        strokeWidth={isSelected ? 4 : 2}
+        stroke={isSelected ? "#4A90E2" : item.parentId ? "#e67e22" : DEFAULT_FURNITURE_STROKE}
+        strokeWidth={isSelected ? 4 : item.parentId ? 3 : 2}
         cornerRadius={4}
+        dash={item.parentId && !isSelected ? [8, 4] : undefined}
       />
       {/* Type-specific visual markers */}
       {renderFurnitureMarker(item)}

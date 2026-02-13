@@ -253,10 +253,12 @@ export function checkFurnitureCollision(
  */
 export function checkCollisionWithOthers(
   item: FurnitureItem,
-  allFurniture: FurnitureItem[]
+  allFurniture: FurnitureItem[],
+  excludeIds?: Set<string>,
 ): boolean {
   for (const other of allFurniture) {
     if (other.id === item.id) continue;
+    if (excludeIds?.has(other.id)) continue;
     if (checkFurnitureCollision(item, other)) {
       return true;
     }

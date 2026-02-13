@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateLayoutDoc, LayoutDocSchema } from "./zodSchemas";
+import { validateLayoutDoc, migrateLayout } from "./zodSchemas";
 
 describe("zodSchemas", () => {
   const validLayout = {
@@ -23,8 +23,15 @@ describe("zodSchemas", () => {
   };
 
   describe("validateLayoutDoc", () => {
-    it("should validate correct layout", () => {
+    it("should validate correct v1.1.0 layout (auto-migrated to v1.2.0)", () => {
       const result = validateLayoutDoc(validLayout);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data?.version).toBe("1.2.0");
+    });
+
+    it("should validate correct v1.2.0 layout", () => {
+      const result = validateLayoutDoc({ ...validLayout, version: "1.2.0" });
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
     });
@@ -97,6 +104,59 @@ describe("zodSchemas", () => {
       const result = validateLayoutDoc(invalid);
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
+    });
+
+    it("should validate furniture with attachment fields", () => {
+      const layout = {
+        ...validLayout,
+        version: "1.2.0",
+        furniture: [
+          {
+            id: "desk-1",
+            type: "desk",
+            name: "Desk",
+            x: 100,
+            y: 100,
+            width: 1200,
+            depth: 600,
+            height: 720,
+            rotation: 0,
+            zIndex: 0,
+            locked: false,
+          },
+          {
+            id: "arm-1",
+            type: "monitor-arm",
+            name: "Monitor Arm",
+            x: 200,
+            y: 200,
+            width: 200,
+            depth: 200,
+            height: 500,
+            rotation: 0,
+            zIndex: 1,
+            locked: false,
+            parentId: "desk-1",
+            attachOffsetX: 100,
+            attachOffsetY: 0,
+          },
+        ],
+      };
+      const result = validateLayoutDoc(layout);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("migrateLayout", () => {
+    it("should migrate v1.1.0 to v1.2.0", () => {
+      const result = migrateLayout({ ...validLayout });
+      expect(result.version).toBe("1.2.0");
+    });
+
+    it("should not change v1.2.0", () => {
+      const data = { ...validLayout, version: "1.2.0" };
+      const result = migrateLayout(data);
+      expect(result.version).toBe("1.2.0");
     });
   });
 });

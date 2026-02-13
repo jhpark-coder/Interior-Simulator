@@ -35,12 +35,38 @@ export const FurnitureTypeSchema = z.enum([
   "bookshelf",
   "sofa",
   "table",
+  "refrigerator",
+  "washing-machine",
+  "dryer",
+  "dishwasher",
+  "oven",
+  "microwave",
+  "tv",
+  "air-conditioner",
+  "air-purifier",
+  "humidifier",
+  "monitor-stand",
+  "monitor-arm",
+  "sink",
+  "toilet",
+  "bathtub",
+  "shower",
+  "custom",
+]);
+
+// ItemCategory schema
+export const ItemCategorySchema = z.enum([
+  "furniture",
+  "appliance",
+  "electronics",
+  "fixture",
 ]);
 
 // FurnitureItem schema
 export const FurnitureItemSchema = z.object({
   id: z.string(),
   type: FurnitureTypeSchema,
+  category: ItemCategorySchema.optional(),
   name: z.string(),
   x: z.number(),
   y: z.number(),
@@ -55,6 +81,10 @@ export const FurnitureItemSchema = z.object({
   zIndex: z.number(),
   locked: z.boolean(),
   pivoted: z.boolean().optional(),
+  parentId: z.string().optional(),
+  attachOffsetX: z.number().optional(),
+  attachOffsetY: z.number().optional(),
+  monitorInches: z.number().optional(),
 });
 
 // Door schema
@@ -84,8 +114,8 @@ export const WindowSchema = z.object({
   sillHeight: z.number().min(0, "Sill height must be non-negative"),
 });
 
-// LayoutDoc schema
-export const LayoutDocSchema = z.object({
+// LayoutDoc v1.1.0 schema
+const LayoutDocV110Schema = z.object({
   version: z.literal("1.1.0"),
   room: RoomSchema,
   furniture: z.array(FurnitureItemSchema),
@@ -97,11 +127,41 @@ export const LayoutDocSchema = z.object({
   }),
 });
 
+// LayoutDoc v1.2.0 schema
+const LayoutDocV120Schema = z.object({
+  version: z.literal("1.2.0"),
+  room: RoomSchema,
+  furniture: z.array(FurnitureItemSchema),
+  doors: z.array(DoorSchema),
+  windows: z.array(WindowSchema),
+  meta: z.object({
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  }),
+});
+
+// Combined LayoutDoc schema (accepts both versions)
+export const LayoutDocSchema = z.discriminatedUnion("version", [
+  LayoutDocV110Schema,
+  LayoutDocV120Schema,
+]);
+
 // Type inference
 export type LayoutDocInput = z.infer<typeof LayoutDocSchema>;
 
 /**
- * Validates a LayoutDoc object
+ * Migrates a v1.1.0 layout to v1.2.0.
+ * Since the new fields are optional, only the version needs updating.
+ */
+export function migrateLayout(data: Record<string, unknown>): Record<string, unknown> {
+  if (data.version === "1.1.0") {
+    return { ...data, version: "1.2.0" };
+  }
+  return data;
+}
+
+/**
+ * Validates a LayoutDoc object (auto-migrates v1.1.0 → v1.2.0)
  */
 export function validateLayoutDoc(data: unknown): {
   success: boolean;
@@ -109,7 +169,8 @@ export function validateLayoutDoc(data: unknown): {
   errors?: string[];
 } {
   try {
-    const result = LayoutDocSchema.parse(data);
+    const migrated = migrateLayout(data as Record<string, unknown>);
+    const result = LayoutDocSchema.parse(migrated);
     return { success: true, data: result };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -129,5 +190,6 @@ export function validateLayoutDoc(data: unknown): {
  * Safely validates a LayoutDoc object (non-throwing)
  */
 export function safeValidateLayoutDoc(data: unknown) {
-  return LayoutDocSchema.safeParse(data);
+  const migrated = migrateLayout(data as Record<string, unknown>);
+  return LayoutDocSchema.safeParse(migrated);
 }

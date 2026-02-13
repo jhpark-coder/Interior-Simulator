@@ -25,6 +25,14 @@ import {
   constrainOpeningOffset,
   checkCollisionWithOthers,
   constrainToRoom,
+  computeChildWorldPos,
+  computeAttachOffset,
+  getChildren,
+  buildAttachmentExcludeIds,
+  isAttachableType,
+  isParentType,
+  findOverlappingParent,
+  snapToParentEdge,
 } from "../utils";
 
 const createId = () => {
@@ -47,7 +55,7 @@ const createFurnitureItem = (
   let category: "furniture" | "appliance" | "electronics" | "fixture" = "furniture";
   if (["refrigerator", "washing-machine", "dryer", "dishwasher", "oven", "microwave"].includes(type)) {
     category = "appliance";
-  } else if (["tv", "air-conditioner", "air-purifier", "humidifier"].includes(type)) {
+  } else if (["tv", "air-conditioner", "air-purifier", "humidifier", "monitor-stand", "monitor-arm"].includes(type)) {
     category = "electronics";
   } else if (["sink", "toilet", "bathtub", "shower"].includes(type)) {
     category = "fixture";
@@ -79,7 +87,7 @@ const buildLayoutDoc = (
 ): LayoutDoc => {
   const now = new Date().toISOString();
   return {
-    version: "1.1.0",
+    version: "1.2.0",
     room,
     furniture,
     doors,
@@ -149,6 +157,8 @@ type SimulatorState = {
   addWindow: (wall: WallSide, offset?: number) => void;
   updateWindow: (id: string, patch: Partial<Omit<Window, "id">>) => void;
   removeWindow: (id: string) => void;
+  attachToParent: (childId: string, parentId: string) => void;
+  detachFromParent: (childId: string) => void;
   commitHistory: () => void;
   undo: () => void;
   redo: () => void;
@@ -260,8 +270,34 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       id: createId(),
     };
 
-    // Check collision with existing furniture
-    if (checkCollisionWithOthers(item, furniture)) {
+    // Auto-attach: if this is an attachable type and overlaps a desk/table
+    if (isAttachableType(item.type)) {
+      const parent = findOverlappingParent(item, furniture);
+      if (parent) {
+        // Snap to nearest edge of the parent
+        const childCx = item.x + item.width / 2;
+        const childCy = item.y + item.depth / 2;
+        const snapped = snapToParentEdge(item, parent, childCx, childCy);
+        item.x = snapped.x;
+        item.y = snapped.y;
+        item.parentId = parent.id;
+        const offset = computeAttachOffset(item, parent);
+        item.attachOffsetX = offset.attachOffsetX;
+        item.attachOffsetY = offset.attachOffsetY;
+      }
+    }
+
+    // Build collision exclude set (parent/siblings are excluded)
+    const excludeIds = new Set<string>();
+    if (item.parentId) {
+      excludeIds.add(item.parentId);
+      for (const f of furniture) {
+        if (f.parentId === item.parentId) excludeIds.add(f.id);
+      }
+    }
+
+    // Check collision with existing furniture (excluding parent/siblings)
+    if (checkCollisionWithOthers(item, furniture, excludeIds)) {
       set({
         validationErrors: [FURNITURE_COLLISION_ERROR],
       });
@@ -317,9 +353,46 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     item.x = constrained.x;
     item.y = constrained.y;
 
-    if (checkCollisionWithOthers(item, furniture)) {
+    // Auto-attach: if attachable type placed on desk/table
+    if (isAttachableType(item.type) && !item.parentId) {
+      const otherFurniture = furniture.filter((f) => f.id !== placingFurnitureId);
+      const parent = findOverlappingParent(item, otherFurniture);
+      if (parent) {
+        const childCx = item.x + item.width / 2;
+        const childCy = item.y + item.depth / 2;
+        const snapped = snapToParentEdge(item, parent, childCx, childCy);
+        item.x = snapped.x;
+        item.y = snapped.y;
+        item.parentId = parent.id;
+        const offset = computeAttachOffset(item, parent);
+        item.attachOffsetX = offset.attachOffsetX;
+        item.attachOffsetY = offset.attachOffsetY;
+      }
+    }
+
+    // Build exclude set for parent-child collision
+    const excludeIds = buildAttachmentExcludeIds(placingFurnitureId, furniture);
+    // Also exclude the parent if we just auto-attached
+    if (item.parentId) {
+      excludeIds.add(item.parentId);
+      for (const f of furniture) {
+        if (f.parentId === item.parentId) excludeIds.add(f.id);
+      }
+    }
+
+    if (checkCollisionWithOthers(item, furniture, excludeIds)) {
       set({ validationErrors: [FURNITURE_COLLISION_ERROR] });
       return;
+    }
+
+    // Recalculate attachment offset if this is a child
+    if (item.parentId) {
+      const parent = furniture.find((f) => f.id === item.parentId);
+      if (parent) {
+        const offset = computeAttachOffset(item, parent);
+        item.attachOffsetX = offset.attachOffsetX;
+        item.attachOffsetY = offset.attachOffsetY;
+      }
     }
 
     const snapshot = get().snapshot();
@@ -328,10 +401,32 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     history.future = get().historyFuture;
     const newHistory = pushHistory(history, snapshot);
 
+    // If this item is a parent, sync children positions
+    let updatedFurniture = furniture.map((existing) =>
+      existing.id === placingFurnitureId ? item : existing
+    );
+
+    if (!item.parentId) {
+      const children = getChildren(placingFurnitureId, updatedFurniture);
+      if (children.length > 0) {
+        updatedFurniture = updatedFurniture.map((f) => {
+          if (f.parentId !== placingFurnitureId) return f;
+          const worldPos = computeChildWorldPos(
+            f.attachOffsetX ?? 0,
+            f.attachOffsetY ?? 0,
+            item,
+          );
+          return {
+            ...f,
+            x: worldPos.x - f.width / 2,
+            y: worldPos.y - f.depth / 2,
+          };
+        });
+      }
+    }
+
     set({
-      furniture: furniture.map((existing) =>
-        existing.id === placingFurnitureId ? item : existing
-      ),
+      furniture: updatedFurniture,
       placingFurnitureId: null,
       placingFurniture: null,
       selectedEntity: { kind: "furniture", id: placingFurnitureId },
@@ -502,8 +597,13 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       patch.depth !== undefined;
 
     let collisionRejected = false;
+    const target = furniture.find((f) => f.id === id);
+    if (!target) return;
 
-    const updatedFurniture = furniture.map((item) => {
+    // Build exclude set for parent-child collision
+    const excludeIds = buildAttachmentExcludeIds(id, furniture);
+
+    let updatedFurniture = furniture.map((item) => {
       if (item.id !== id) return item;
       const candidate: FurnitureItem = { ...item, ...patch };
 
@@ -515,13 +615,46 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       candidate.x = constrained.x;
       candidate.y = constrained.y;
 
-      if (checkCollisionWithOthers(candidate, furniture)) {
+      if (checkCollisionWithOthers(candidate, furniture, excludeIds)) {
         collisionRejected = true;
         return item;
       }
 
       return candidate;
     });
+
+    if (!collisionRejected && needsPlacementValidation) {
+      const updated = updatedFurniture.find((f) => f.id === id)!;
+
+      if (!updated.parentId) {
+        // This item might be a parent — sync children
+        const children = getChildren(id, updatedFurniture);
+        if (children.length > 0) {
+          updatedFurniture = updatedFurniture.map((f) => {
+            if (f.parentId !== id) return f;
+            const worldPos = computeChildWorldPos(
+              f.attachOffsetX ?? 0,
+              f.attachOffsetY ?? 0,
+              updated,
+            );
+            return {
+              ...f,
+              x: worldPos.x - f.width / 2,
+              y: worldPos.y - f.depth / 2,
+            };
+          });
+        }
+      } else {
+        // This item is a child — recalculate offset from parent
+        const parent = updatedFurniture.find((f) => f.id === updated.parentId);
+        if (parent) {
+          const offset = computeAttachOffset(updated, parent);
+          updatedFurniture = updatedFurniture.map((f) =>
+            f.id === id ? { ...f, ...offset } : f,
+          );
+        }
+      }
+    }
 
     set({
       furniture: updatedFurniture,
@@ -535,11 +668,18 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     history.future = get().historyFuture;
     const newHistory = pushHistory(history, snapshot);
 
+    // Collect IDs to remove: self + all children (cascade)
+    const { furniture } = get();
+    const childIds = new Set(
+      furniture.filter((f) => f.parentId === id).map((f) => f.id),
+    );
+    const removeIds = new Set([id, ...childIds]);
+
     set((state) => ({
-      furniture: state.furniture.filter((item) => item.id !== id),
+      furniture: state.furniture.filter((item) => !removeIds.has(item.id)),
       selectedEntity:
         state.selectedEntity?.kind === "furniture" &&
-        state.selectedEntity.id === id
+        removeIds.has(state.selectedEntity.id)
           ? null
           : state.selectedEntity,
       placingFurnitureId: state.placingFurnitureId === id ? null : state.placingFurnitureId,
@@ -737,6 +877,54 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       historyFuture: newHistory.future,
     }));
   },
+  attachToParent: (childId, parentId) => {
+    const { furniture } = get();
+    const child = furniture.find((f) => f.id === childId);
+    const parent = furniture.find((f) => f.id === parentId);
+    if (!child || !parent) return;
+    // Prevent circular attachment
+    if (parent.parentId) return;
+    if (child.parentId) return; // Already attached
+
+    const offset = computeAttachOffset(child, parent);
+
+    const snapshot = get().snapshot();
+    const history = createHistory<LayoutDoc>(30);
+    history.past = get().historyPast;
+    history.future = get().historyFuture;
+    const newHistory = pushHistory(history, snapshot);
+
+    set({
+      furniture: furniture.map((f) =>
+        f.id === childId
+          ? { ...f, parentId, attachOffsetX: offset.attachOffsetX, attachOffsetY: offset.attachOffsetY }
+          : f,
+      ),
+      historyPast: newHistory.past,
+      historyFuture: newHistory.future,
+    });
+  },
+  detachFromParent: (childId) => {
+    const { furniture } = get();
+    const child = furniture.find((f) => f.id === childId);
+    if (!child || !child.parentId) return;
+
+    const snapshot = get().snapshot();
+    const history = createHistory<LayoutDoc>(30);
+    history.past = get().historyPast;
+    history.future = get().historyFuture;
+    const newHistory = pushHistory(history, snapshot);
+
+    set({
+      furniture: furniture.map((f) =>
+        f.id === childId
+          ? { ...f, parentId: undefined, attachOffsetX: undefined, attachOffsetY: undefined }
+          : f,
+      ),
+      historyPast: newHistory.past,
+      historyFuture: newHistory.future,
+    });
+  },
   commitHistory: () => {
     const snapshot = get().snapshot();
     const history = createHistory<LayoutDoc>(30);
@@ -795,9 +983,34 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     }
   },
   importLayout: (layout: LayoutDoc) => {
+    const allIds = new Set(layout.furniture.map((f) => f.id));
+    // Clean up orphan children and recalculate world positions from offsets
+    const furniture = layout.furniture.map((f) => {
+      if (f.parentId && !allIds.has(f.parentId)) {
+        // Orphan: remove attachment fields
+        const { parentId: _, attachOffsetX: _ox, attachOffsetY: _oy, ...rest } = f;
+        return rest as FurnitureItem;
+      }
+      if (f.parentId) {
+        const parent = layout.furniture.find((p) => p.id === f.parentId);
+        if (parent) {
+          const worldPos = computeChildWorldPos(
+            f.attachOffsetX ?? 0,
+            f.attachOffsetY ?? 0,
+            parent,
+          );
+          return {
+            ...f,
+            x: worldPos.x - f.width / 2,
+            y: worldPos.y - f.depth / 2,
+          };
+        }
+      }
+      return f;
+    });
     set({
       room: layout.room,
-      furniture: layout.furniture,
+      furniture,
       doors: layout.doors,
       windows: layout.windows,
       pendingFurniture: null,

@@ -66,6 +66,10 @@ export type FurnitureItem = {
   zIndex: number;
   locked: boolean;
   pivoted?: boolean;
+  parentId?: string;
+  attachOffsetX?: number;
+  attachOffsetY?: number;
+  monitorInches?: number;
 };
 
 export type ItemDefinition = {
@@ -106,7 +110,7 @@ export type Window = {
 };
 
 export type LayoutDoc = {
-  version: "1.1.0";
+  version: "1.1.0" | "1.2.0";
   room: Room;
   furniture: FurnitureItem[];
   doors: Door[];

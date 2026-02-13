@@ -3,42 +3,23 @@ import "./InspectorPanel.css";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import type { Room, WallSide, FurnitureType } from "../types";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
-
-const MM_PER_INCH = 25.4;
-const DIAG = Math.sqrt(16 * 16 + 9 * 9); // ≈ 18.358
+import { isAttachableType, isParentType, getChildren } from "../utils";
 
 function isMonitorType(type: FurnitureType): boolean {
   return type === "monitor-stand" || type === "monitor-arm";
 }
 
-function inchesToDimensions(
-  inches: number,
-  type: FurnitureType,
-  name: string,
-): { width?: number; depth?: number; height?: number } {
-  const monitorW = (inches * MM_PER_INCH * 16) / DIAG;
-  const monitorH = (inches * MM_PER_INCH * 9) / DIAG;
-
-  if (type === "monitor-stand") {
-    return { width: monitorW / 0.92, height: monitorH / 0.6 };
-  }
-  // monitor-arm
-  if (name.includes("기둥")) {
-    return { depth: monitorW / 0.85, height: monitorH / 0.45 };
-  }
-  return { depth: monitorW / 0.85, height: monitorH / 0.5 };
-}
-
-function dimensionsToInches(
+/** Default inches for a monitor type, derived from arm/stand proportions */
+function defaultMonitorInches(
   type: FurnitureType,
   name: string,
   width: number,
   depth: number,
   height: number,
 ): number {
+  const MM_PER_INCH = 25.4;
   let monitorW: number;
   let monitorH: number;
-
   if (type === "monitor-stand") {
     monitorW = width * 0.92;
     monitorH = height * 0.6;
@@ -49,7 +30,6 @@ function dimensionsToInches(
     monitorW = depth * 0.85;
     monitorH = height * 0.5;
   }
-
   const diagMM = Math.sqrt(monitorW * monitorW + monitorH * monitorH);
   return diagMM / MM_PER_INCH;
 }
@@ -165,6 +145,8 @@ export function InspectorPanel() {
   const cancelPending = useSimulatorStore((state) => state.cancelPending);
   const commitHistory = useSimulatorStore((state) => state.commitHistory);
   const validationErrors = useSimulatorStore((state) => state.validationErrors);
+  const attachToParent = useSimulatorStore((state) => state.attachToParent);
+  const detachFromParent = useSimulatorStore((state) => state.detachFromParent);
 
   const updateRoom = (patch: Partial<Room>) => setRoom(patch);
 
@@ -251,23 +233,19 @@ export function InspectorPanel() {
             )}
             {isMonitorType(placingFurniture.type) &&
               numberField(
-                "인치",
+                "모니터 인치",
                 Math.round(
-                  dimensionsToInches(
-                    placingFurniture.type,
-                    placingFurniture.name,
-                    placingFurniture.width,
-                    placingFurniture.depth,
-                    placingFurniture.height,
-                  ) * 10,
+                  (placingFurniture.monitorInches ??
+                    defaultMonitorInches(
+                      placingFurniture.type,
+                      placingFurniture.name,
+                      placingFurniture.width,
+                      placingFurniture.depth,
+                      placingFurniture.height,
+                    )) * 10,
                 ) / 10,
                 (next) => {
-                  const dims = inchesToDimensions(
-                    Math.max(next, 10),
-                    placingFurniture.type,
-                    placingFurniture.name,
-                  );
-                  updatePlacementFurniture(dims);
+                  updatePlacementFurniture({ monitorInches: Math.max(next, 10) });
                 },
               )}
           </div>
@@ -371,23 +349,19 @@ export function InspectorPanel() {
             )}
             {isMonitorType(pendingFurniture.type) &&
               numberField(
-                "인치",
+                "모니터 인치",
                 Math.round(
-                  dimensionsToInches(
-                    pendingFurniture.type,
-                    pendingFurniture.name,
-                    pendingFurniture.width,
-                    pendingFurniture.depth,
-                    pendingFurniture.height,
-                  ) * 10,
+                  (pendingFurniture.monitorInches ??
+                    defaultMonitorInches(
+                      pendingFurniture.type,
+                      pendingFurniture.name,
+                      pendingFurniture.width,
+                      pendingFurniture.depth,
+                      pendingFurniture.height,
+                    )) * 10,
                 ) / 10,
                 (next) => {
-                  const dims = inchesToDimensions(
-                    Math.max(next, 10),
-                    pendingFurniture.type,
-                    pendingFurniture.name,
-                  );
-                  updatePendingFurniture(dims);
+                  updatePendingFurniture({ monitorInches: Math.max(next, 10) });
                 },
               )}
           </div>
@@ -828,23 +802,19 @@ export function InspectorPanel() {
             })}
             {isMonitorType(selectedFurniture.type) &&
               numberField(
-                "인치",
+                "모니터 인치",
                 Math.round(
-                  dimensionsToInches(
-                    selectedFurniture.type,
-                    selectedFurniture.name,
-                    selectedFurniture.width,
-                    selectedFurniture.depth,
-                    selectedFurniture.height,
-                  ) * 10,
+                  (selectedFurniture.monitorInches ??
+                    defaultMonitorInches(
+                      selectedFurniture.type,
+                      selectedFurniture.name,
+                      selectedFurniture.width,
+                      selectedFurniture.depth,
+                      selectedFurniture.height,
+                    )) * 10,
                 ) / 10,
                 (next) => {
-                  const dims = inchesToDimensions(
-                    Math.max(next, 10),
-                    selectedFurniture.type,
-                    selectedFurniture.name,
-                  );
-                  updateFurniture(selectedFurniture.id, dims);
+                  updateFurniture(selectedFurniture.id, { monitorInches: Math.max(next, 10) });
                   commitHistory();
                 },
               )}
@@ -886,6 +856,104 @@ export function InspectorPanel() {
               +90°
             </button>
           </div>
+          {/* Attachment UI for monitor types */}
+          {isAttachableType(selectedFurniture.type) && !selectedFurniture.parentId && (
+            <div style={{ marginTop: "1rem" }}>
+              <p style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>
+                부착 가능한 책상:
+              </p>
+              {furniture
+                .filter((f) => isParentType(f.type) && !f.parentId)
+                .map((desk) => (
+                  <button
+                    key={desk.id}
+                    onClick={() => attachToParent(selectedFurniture.id, desk.id)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      marginBottom: "0.25rem",
+                      padding: "0.5rem 0.75rem",
+                      background: "#e67e22",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    {desk.name}에 부착
+                  </button>
+                ))}
+              {furniture.filter((f) => isParentType(f.type) && !f.parentId).length === 0 && (
+                <p style={{ fontSize: "0.8rem", color: "#999" }}>배치된 책상이 없습니다</p>
+              )}
+            </div>
+          )}
+          {isAttachableType(selectedFurniture.type) && selectedFurniture.parentId && (
+            <div style={{ marginTop: "1rem" }}>
+              <p style={{ fontSize: "0.875rem", color: "#e67e22", marginBottom: "0.5rem" }}>
+                {furniture.find((f) => f.id === selectedFurniture.parentId)?.name ?? "알 수 없음"}에 부착됨
+              </p>
+              <button
+                onClick={() => detachFromParent(selectedFurniture.id)}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem 0.75rem",
+                  background: "#95a5a6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                }}
+              >
+                분리
+              </button>
+            </div>
+          )}
+          {/* Attached items list for parent types */}
+          {isParentType(selectedFurniture.type) && (() => {
+            const children = getChildren(selectedFurniture.id, furniture);
+            if (children.length === 0) return null;
+            return (
+              <div style={{ marginTop: "1rem" }}>
+                <p style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>
+                  부착된 아이템:
+                </p>
+                {children.map((child) => (
+                  <div
+                    key={child.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "0.25rem",
+                      padding: "0.4rem 0.5rem",
+                      background: "#fef3e2",
+                      borderRadius: "4px",
+                      border: "1px solid #e67e22",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.85rem", color: "#333" }}>{child.name}</span>
+                    <button
+                      onClick={() => detachFromParent(child.id)}
+                      style={{
+                        padding: "0.2rem 0.5rem",
+                        background: "#95a5a6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "3px",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      분리
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <button
             className="inspector-delete"
             onClick={() => removeFurniture(selectedFurniture.id)}

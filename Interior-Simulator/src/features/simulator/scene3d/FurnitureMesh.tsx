@@ -10,6 +10,16 @@ type FurnitureMeshProps = {
   item: FurnitureItem;
 };
 
+const MM_PER_INCH = 25.4;
+const DIAG_16_9 = Math.sqrt(16 * 16 + 9 * 9);
+
+function getMonitorDims(inches: number): { w: number; h: number } {
+  return {
+    w: (inches * MM_PER_INCH * 16) / DIAG_16_9,
+    h: (inches * MM_PER_INCH * 9) / DIAG_16_9,
+  };
+}
+
 function BedMesh({
   width,
   depth,
@@ -1444,9 +1454,11 @@ function MonitorStandMesh({
   const neckH = height * 0.2;
   const neckBottomY = baseH;
 
-  // Monitor panel
-  const monitorW = width * 0.92;
-  const monitorH = height * 0.6;
+  // Monitor panel — use monitorInches if set, otherwise fallback to proportion
+  const hasInches = item.monitorInches != null && item.monitorInches > 0;
+  const monitorDims = hasInches ? getMonitorDims(item.monitorInches!) : null;
+  const monitorW = monitorDims ? monitorDims.w : width * 0.92;
+  const monitorH = monitorDims ? monitorDims.h : height * 0.6;
   const monitorT = 18; // thin panel
   const monitorBottomY = neckBottomY + neckH * 0.3;
   const monitorCenterY = monitorBottomY + monitorH / 2;
@@ -1547,6 +1559,7 @@ function MonitorArmPoleMesh({
   const clampW = width * 0.6;
   const clampD = depth * 0.15;
   const clampH = height * 0.06;
+  const backOffset = -depth / 2 + clampD / 2;
 
   // Vertical pole
   const poleR = width * 0.12;
@@ -1568,9 +1581,11 @@ function MonitorArmPoleMesh({
   const vesaH = height * 0.12;
   const vesaD = depth * 0.15;
 
-  // Monitor panel
-  const monitorW = depth * 0.85;
-  const monitorH = height * 0.45;
+  // Monitor panel — use monitorInches if set
+  const hasInches = item.monitorInches != null && item.monitorInches > 0;
+  const monDims = hasInches ? getMonitorDims(item.monitorInches!) : null;
+  const monitorW = monDims ? monDims.w : depth * 0.85;
+  const monitorH = monDims ? monDims.h : height * 0.45;
   const monitorT = 16;
   const monitorZ = armW / 2 + vesaW + monitorT / 2;
 
@@ -1600,7 +1615,7 @@ function MonitorArmPoleMesh({
   );
 
   return (
-    <>
+    <group position={[0, 0, backOffset]}>
       {/* Desk clamp base */}
       <mesh position={[0, clampH / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[clampW, clampH, clampD]} />
@@ -1658,7 +1673,7 @@ function MonitorArmPoleMesh({
           </mesh>
         </group>
       </group>
-    </>
+    </group>
   );
 }
 
@@ -1681,6 +1696,7 @@ function MonitorArmClampMesh({
   const clampW = width * 0.7;
   const clampD = depth * 0.12;
   const clampH = height * 0.06;
+  const backOffset = -depth / 2 + clampD / 2;
 
   // Lower arm segment (goes up then forward)
   const lowerArmLen = height * 0.4;
@@ -1692,9 +1708,11 @@ function MonitorArmClampMesh({
   // Upper arm segment (horizontal, forward)
   const upperArmLen = depth * 0.4;
 
-  // Monitor
-  const monitorW = depth * 0.85;
-  const monitorH = height * 0.5;
+  // Monitor — use monitorInches if set
+  const hasInches = item.monitorInches != null && item.monitorInches > 0;
+  const monDims = hasInches ? getMonitorDims(item.monitorInches!) : null;
+  const monitorW = monDims ? monDims.w : depth * 0.85;
+  const monitorH = monDims ? monDims.h : height * 0.5;
   const monitorT = 16;
 
   // VESA plate
@@ -1736,7 +1754,7 @@ function MonitorArmClampMesh({
   );
 
   return (
-    <>
+    <group position={[0, 0, backOffset]}>
       {/* Desk clamp */}
       <mesh position={[0, clampH / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[clampW, clampH, clampD]} />
@@ -1805,13 +1823,18 @@ function MonitorArmClampMesh({
           </mesh>
         </group>
       </group>
-    </>
+    </group>
   );
 }
 
 export function FurnitureMesh({ item }: FurnitureMeshProps) {
   const color = item.color ?? DEFAULT_FURNITURE_COLOR;
   const rotationY = -(item.rotation * Math.PI) / 180;
+  const furniture = useSimulatorStore((s) => s.furniture);
+
+  // Compute Y offset for attached items (placed on top of parent)
+  const parent = item.parentId ? furniture.find((f) => f.id === item.parentId) : null;
+  const yOffset = parent ? parent.height : 0;
 
   if (item.type === "closet" || item.type === "display-cabinet") {
     const Comp =
@@ -1841,7 +1864,7 @@ export function FurnitureMesh({ item }: FurnitureMeshProps) {
       <group
         position={[
           item.x + item.width / 2,
-          0,
+          yOffset,
           item.y + item.depth / 2,
         ]}
         rotation={[0, rotationY, 0]}
