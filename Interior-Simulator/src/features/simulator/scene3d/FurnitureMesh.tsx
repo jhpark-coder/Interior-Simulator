@@ -1568,6 +1568,7 @@ function MonitorArmPoleMesh({
 
   // Short horizontal arm
   const armW = depth * 0.35;
+  const armLen = armW * 0.5;
   const armH = poleR * 1.2;
   const armD = poleR * 1.2;
   const armY = poleBottomY + poleH * 0.85;
@@ -1629,8 +1630,8 @@ function MonitorArmPoleMesh({
       </mesh>
 
       {/* Horizontal arm */}
-      <mesh position={[0, armY, armW / 4]} castShadow>
-        <boxGeometry args={[armD, armH, armW]} />
+      <mesh position={[0, armY, armLen / 2]} castShadow>
+        <boxGeometry args={[armD, armH, armLen]} />
         <meshStandardMaterial color={metalColor} metalness={0.5} roughness={0.3} />
       </mesh>
 
