@@ -94,8 +94,10 @@ export const DoorSchema = z.object({
   offset: z.number().min(0, "Door offset must be non-negative"),
   width: z.number().min(500, "Door width must be at least 500mm"),
   height: z.number().min(1800, "Door height must be at least 1800mm"),
+  doorType: z.enum(["swing", "sliding"]).optional().default("swing"),
   hinge: DoorHingeSchema,
   swing: DoorSwingSchema,
+  slideDirection: z.enum(["left", "right"]).optional().default("left"),
   openAngle: z
     .number()
     .min(0, "Open angle must be at least 0")

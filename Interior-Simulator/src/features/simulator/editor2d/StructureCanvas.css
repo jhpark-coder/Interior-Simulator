@@ -1,0 +1,53 @@
+.structure-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+  border-radius: 18px;
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.structure-canvas canvas {
+  outline: none;
+}
+
+.structure-canvas-status {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #475569;
+  font-size: 0.78rem;
+  backdrop-filter: blur(8px);
+}
+
+.structure-canvas-status strong {
+  color: #1e293b;
+  pointer-events: none;
+}
+
+.structure-canvas-status span {
+  pointer-events: none;
+}
+
+.structure-canvas-status button {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}

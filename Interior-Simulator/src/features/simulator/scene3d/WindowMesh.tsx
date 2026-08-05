@@ -1,8 +1,13 @@
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group, Vector3, ShaderMaterial } from "three";
+import { Group, Vector3 } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import type { Window, Room } from "../types";
+import {
+  getWindowPlacement,
+  getWindowSlideTargets,
+  interpolateAnimatedValue,
+} from "./scene3dMath";
 
 const skyVertexShader = /* glsl */ `
   varying vec2 vUv;
@@ -32,7 +37,7 @@ type WindowMeshProps = {
 };
 
 export function WindowMesh({ window: win, room }: WindowMeshProps) {
-  const { width, height, wallThickness } = room;
+  const { wallThickness } = room;
   const [openSide, setOpenSide] = useState<"left" | "right" | null>(null);
   const leftOffsetRef = useRef(0);
   const rightOffsetRef = useRef(0);
@@ -40,30 +45,7 @@ export function WindowMesh({ window: win, room }: WindowMeshProps) {
   const rightRef = useRef<Group>(null);
   const rootRef = useRef<Group>(null);
 
-  let position: [number, number, number] = [0, 0, 0];
-  let rotation: [number, number, number] = [0, 0, 0];
-
-  const windowY = win.sillHeight + win.height / 2;
-  const cx = win.offset + win.width / 2;
-
-  switch (win.wall) {
-    case "north":
-      position = [cx, windowY, -wallThickness / 2];
-      rotation = [0, 0, 0];
-      break;
-    case "south":
-      position = [cx, windowY, height + wallThickness / 2];
-      rotation = [0, Math.PI, 0];
-      break;
-    case "east":
-      position = [width + wallThickness / 2, windowY, cx];
-      rotation = [0, Math.PI / 2, 0];
-      break;
-    case "west":
-      position = [-wallThickness / 2, windowY, cx];
-      rotation = [0, -Math.PI / 2, 0];
-      break;
-  }
+  const { position, rotation } = getWindowPlacement(win, room);
 
   const frameDepth = wallThickness - 4;
 
@@ -75,26 +57,25 @@ export function WindowMesh({ window: win, room }: WindowMeshProps) {
   const panelW = innerW / 2;
   const divT = 16;
 
-  const leftTarget = openSide === "left" ? panelW : 0;
-  const rightTarget = openSide === "right" ? -panelW : 0;
+  const { leftTarget, rightTarget } = getWindowSlideTargets(openSide, panelW);
 
   useFrame(() => {
     if (leftRef.current) {
-      const diff = leftTarget - leftOffsetRef.current;
-      if (Math.abs(diff) < 0.5) {
-        leftOffsetRef.current = leftTarget;
-      } else {
-        leftOffsetRef.current += diff * 0.1;
-      }
+      leftOffsetRef.current = interpolateAnimatedValue(
+        leftOffsetRef.current,
+        leftTarget,
+        0.1,
+        0.5
+      );
       leftRef.current.position.x = leftOffsetRef.current;
     }
     if (rightRef.current) {
-      const diff = rightTarget - rightOffsetRef.current;
-      if (Math.abs(diff) < 0.5) {
-        rightOffsetRef.current = rightTarget;
-      } else {
-        rightOffsetRef.current += diff * 0.1;
-      }
+      rightOffsetRef.current = interpolateAnimatedValue(
+        rightOffsetRef.current,
+        rightTarget,
+        0.1,
+        0.5
+      );
       rightRef.current.position.x = rightOffsetRef.current;
     }
   });

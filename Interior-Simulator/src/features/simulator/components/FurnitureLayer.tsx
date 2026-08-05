@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { memo, useRef, useEffect, useState } from "react";
 import { Layer, Rect, Text, Group, Circle, Line } from "react-konva";
 import type Konva from "konva";
 import type { FurnitureItem, Room, SelectedEntity } from "../types";
@@ -53,8 +53,7 @@ const adjustColor = (color: string, amount: number) => {
 };
 
 // Render type-specific realistic furniture icons
-const renderFurnitureMarker = (item: FurnitureItem) => {
-  const cx = item.width / 2;
+const FurnitureMarker = memo(function FurnitureMarker({ item }: { item: FurnitureItem }) {
   const cy = item.depth / 2;
   const scale = Math.min(item.width, item.depth) / 100;
   const baseColor = item.color ?? DEFAULT_FURNITURE_COLOR;
@@ -387,7 +386,12 @@ const renderFurnitureMarker = (item: FurnitureItem) => {
     default:
       return null;
   }
-};
+}, (prev, next) =>
+  prev.item.type === next.item.type &&
+  prev.item.width === next.item.width &&
+  prev.item.depth === next.item.depth &&
+  prev.item.color === next.item.color
+);
 
 export function FurnitureLayer({
   furniture,
@@ -429,7 +433,7 @@ export function FurnitureLayer({
       {furniture
         .filter((item) => item.id !== placingFurnitureId)
         .map((item) => (
-        <FurnitureItem
+        <FurnitureItemNode
           key={item.id}
           item={item}
           room={room}
@@ -463,7 +467,7 @@ export function FurnitureLayer({
   );
 }
 
-function FurnitureItem({
+const FurnitureItemNode = memo(function FurnitureItemNode({
   item,
   room,
   allFurniture,
@@ -594,7 +598,7 @@ function FurnitureItem({
         dash={item.parentId && !isSelected ? [8, 4] : undefined}
       />
       {/* Type-specific visual markers */}
-      {renderFurnitureMarker(item)}
+      <FurnitureMarker item={item} />
       <Text
         text={item.name}
         width={item.width}
@@ -608,7 +612,7 @@ function FurnitureItem({
       />
     </Group>
   );
-}
+});
 
 // Pending furniture component (semi-transparent, shows collision status)
 function PendingFurnitureItem({
@@ -633,7 +637,7 @@ function PendingFurnitureItem({
     const testItem = { ...item, id: "pending" } as FurnitureItem;
     const polygons = getCollisionPolygons(testItem, allFurniture);
     setCollisionPolygons(polygons);
-  }, [item.x, item.y, item.rotation, item.width, item.depth, allFurniture]);
+  }, [item, allFurniture]);
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -715,7 +719,7 @@ function PendingFurnitureItem({
         shadowOpacity={0.8}
       />
       {/* Type-specific visual markers */}
-      {renderFurnitureMarker(item as FurnitureItem)}
+      <FurnitureMarker item={item as FurnitureItem} />
       <Text
         text={item.name}
         width={item.width}

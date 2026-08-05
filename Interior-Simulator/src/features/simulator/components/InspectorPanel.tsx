@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import "./InspectorPanel.css";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import { useShallow } from "zustand/react/shallow";
 import type { Room, WallSide, FurnitureType } from "../types";
 import { DEFAULT_FURNITURE_COLOR } from "../constants";
 import { isAttachableType, isParentType, getChildren } from "../utils";
@@ -107,46 +108,81 @@ const colorField = (
 );
 
 export function InspectorPanel() {
-  const room = useSimulatorStore((state) => state.room);
-  const furniture = useSimulatorStore((state) => state.furniture);
-  const doors = useSimulatorStore((state) => state.doors);
-  const windows = useSimulatorStore((state) => state.windows);
-  const selected = useSimulatorStore((state) => state.selectedEntity);
-  const pendingFurniture = useSimulatorStore((state) => state.pendingFurniture);
-  const pendingDoor = useSimulatorStore((state) => state.pendingDoor);
-  const pendingWindow = useSimulatorStore((state) => state.pendingWindow);
-  const placingFurnitureId = useSimulatorStore((state) => state.placingFurnitureId);
-  const placingFurniture = useSimulatorStore((state) => state.placingFurniture);
-  const setRoom = useSimulatorStore((state) => state.setRoom);
-  const startPlacementForFurniture = useSimulatorStore(
-    (state) => state.startPlacementForFurniture
+  const {
+    room,
+    furniture,
+    doors,
+    windows,
+    selected,
+    pendingFurniture,
+    pendingDoor,
+    pendingWindow,
+    placingFurnitureId,
+    placingFurniture,
+    validationErrors,
+  } = useSimulatorStore(
+    useShallow((s) => ({
+      room: s.room,
+      furniture: s.furniture,
+      doors: s.doors,
+      windows: s.windows,
+      selected: s.selectedEntity,
+      pendingFurniture: s.pendingFurniture,
+      pendingDoor: s.pendingDoor,
+      pendingWindow: s.pendingWindow,
+      placingFurnitureId: s.placingFurnitureId,
+      placingFurniture: s.placingFurniture,
+      validationErrors: s.validationErrors,
+    }))
   );
-  const updateFurniture = useSimulatorStore((state) => state.updateFurniture);
-  const removeFurniture = useSimulatorStore((state) => state.removeFurniture);
-  const updateDoor = useSimulatorStore((state) => state.updateDoor);
-  const removeDoor = useSimulatorStore((state) => state.removeDoor);
-  const updateWindow = useSimulatorStore((state) => state.updateWindow);
-  const removeWindow = useSimulatorStore((state) => state.removeWindow);
-  const updatePendingFurniture = useSimulatorStore((state) => state.updatePendingFurniture);
-  const commitPendingFurniture = useSimulatorStore((state) => state.commitPendingFurniture);
-  const updatePlacementFurniture = useSimulatorStore(
-    (state) => state.updatePlacementFurniture
+
+  const {
+    setRoom,
+    startPlacementForFurniture,
+    updateFurniture,
+    removeFurniture,
+    updateDoor,
+    removeDoor,
+    updateWindow,
+    removeWindow,
+    updatePendingFurniture,
+    commitPendingFurniture,
+    updatePlacementFurniture,
+    commitPlacementFurniture,
+    cancelPlacementFurniture,
+    updatePendingDoor,
+    commitPendingDoor,
+    updatePendingWindow,
+    commitPendingWindow,
+    cancelPending,
+    commitHistory,
+    attachToParent,
+    detachFromParent,
+  } = useSimulatorStore(
+    useShallow((s) => ({
+      setRoom: s.setRoom,
+      startPlacementForFurniture: s.startPlacementForFurniture,
+      updateFurniture: s.updateFurniture,
+      removeFurniture: s.removeFurniture,
+      updateDoor: s.updateDoor,
+      removeDoor: s.removeDoor,
+      updateWindow: s.updateWindow,
+      removeWindow: s.removeWindow,
+      updatePendingFurniture: s.updatePendingFurniture,
+      commitPendingFurniture: s.commitPendingFurniture,
+      updatePlacementFurniture: s.updatePlacementFurniture,
+      commitPlacementFurniture: s.commitPlacementFurniture,
+      cancelPlacementFurniture: s.cancelPlacementFurniture,
+      updatePendingDoor: s.updatePendingDoor,
+      commitPendingDoor: s.commitPendingDoor,
+      updatePendingWindow: s.updatePendingWindow,
+      commitPendingWindow: s.commitPendingWindow,
+      cancelPending: s.cancelPending,
+      commitHistory: s.commitHistory,
+      attachToParent: s.attachToParent,
+      detachFromParent: s.detachFromParent,
+    }))
   );
-  const commitPlacementFurniture = useSimulatorStore(
-    (state) => state.commitPlacementFurniture
-  );
-  const cancelPlacementFurniture = useSimulatorStore(
-    (state) => state.cancelPlacementFurniture
-  );
-  const updatePendingDoor = useSimulatorStore((state) => state.updatePendingDoor);
-  const commitPendingDoor = useSimulatorStore((state) => state.commitPendingDoor);
-  const updatePendingWindow = useSimulatorStore((state) => state.updatePendingWindow);
-  const commitPendingWindow = useSimulatorStore((state) => state.commitPendingWindow);
-  const cancelPending = useSimulatorStore((state) => state.cancelPending);
-  const commitHistory = useSimulatorStore((state) => state.commitHistory);
-  const validationErrors = useSimulatorStore((state) => state.validationErrors);
-  const attachToParent = useSimulatorStore((state) => state.attachToParent);
-  const detachFromParent = useSimulatorStore((state) => state.detachFromParent);
 
   const updateRoom = (patch: Partial<Room>) => setRoom(patch);
 

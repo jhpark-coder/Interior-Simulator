@@ -30,3 +30,4 @@ Thumbs.db
 
 # Project docs (local notes/plans)
 *.md
+!docs/FLOORPLAN_TO_3D_DEVELOPMENT_PLAN.md

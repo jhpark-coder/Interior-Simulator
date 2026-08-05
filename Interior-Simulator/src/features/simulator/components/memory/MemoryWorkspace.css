@@ -1,0 +1,159 @@
+.memory-panel,
+.memory-inspector,
+.memory-inspector-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.memory-primary,
+.memory-panel button,
+.memory-inspector button {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+
+.memory-primary,
+.memory-primary.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.memory-field {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.memory-field input,
+.memory-field textarea,
+.memory-field select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 9px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+}
+
+.memory-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.memory-list {
+  display: grid;
+  gap: 7px;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.memory-list-item {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.memory-list-item span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.memory-list-item.active {
+  border-color: #2563eb;
+  box-shadow: inset 3px 0 #2563eb;
+}
+
+.memory-empty,
+.memory-hint,
+.memory-inspector-empty p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.memory-section {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.memory-segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.memory-segmented button.active,
+.memory-viewpoint button.active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.memory-viewpoint {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+}
+
+.memory-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.memory-photo-grid figure {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+}
+
+.memory-photo-grid img,
+.memory-photo-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 9px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.memory-photo-grid figcaption {
+  overflow: hidden;
+  padding-top: 3px;
+  color: #64748b;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-photo-grid button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+}
+
+.memory-danger {
+  border-color: #fecaca !important;
+  color: #b91c1c;
+}

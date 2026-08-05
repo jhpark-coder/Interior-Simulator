@@ -91,7 +91,7 @@ export function constrainToRoom(
 /**
  * Gets the four corners of a rotated furniture item
  */
-function getRotatedCorners(item: FurnitureItem): { x: number; y: number }[] {
+export function getRotatedCorners(item: FurnitureItem): { x: number; y: number }[] {
   const rad = degToRad(item.rotation);
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);

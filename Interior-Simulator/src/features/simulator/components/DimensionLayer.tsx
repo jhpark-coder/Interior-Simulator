@@ -1,5 +1,5 @@
-import React from "react";
-import { Layer, Line, Text, Arrow, Group, Rect, Shape } from "react-konva";
+import React, { memo } from "react";
+import { Layer, Line, Text, Arrow, Group, Rect } from "react-konva";
 import type {
   Room,
   FurnitureItem,
@@ -28,7 +28,7 @@ type HorizontalLabelOptions = {
   labelSide?: "top" | "bottom";
 };
 
-export function DimensionLayer({
+export const DimensionLayer = memo(function DimensionLayer({
   room,
   furniture,
   doors,
@@ -85,9 +85,9 @@ export function DimensionLayer({
     const labelSide = options.labelSide ?? "top";
     const labelWidth = getLabelWidth(label, labelFontSize);
     const labelX = midX - labelWidth / 2;
-    const labelY = y - labelHeight / 2;
-    const parabolaPeakY = labelSide === "top" ? y - toWorld(18) : y + toWorld(18);
-
+    const labelGap = toWorld(8);
+    const labelY =
+      labelSide === "top" ? y - labelHeight - labelGap : y + labelGap;
     return (
       <Group key={key}>
         <Line
@@ -169,7 +169,6 @@ export function DimensionLayer({
       labelSide === "right"
         ? x + labelGap + labelHalfExtentX
         : x - labelGap - labelHalfExtentX;
-    const parabolaPeakX = labelSide === "right" ? x + toWorld(18) : x - toWorld(18);
     const textY = -labelFontSize / 2;
 
     return (
@@ -525,4 +524,4 @@ export function DimensionLayer({
   });
 
   return <Layer listening={false}>{dimensions}</Layer>;
-}
+});

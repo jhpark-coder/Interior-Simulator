@@ -1,5 +1,5 @@
 ﻿import "./Canvas2D.css";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Stage } from "react-konva";
 import type Konva from "konva";
 import { useSimulatorStore } from "../store/useSimulatorStore";
@@ -149,32 +149,31 @@ export function Canvas2D() {
     }
   };
 
-  const handleRoomClick = () => {
+  const handleRoomClick = useCallback(() => {
     selectEntity({ kind: "room" });
-  };
+  }, [selectEntity]);
 
-  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    // 빈 공간(Stage 자체)을 클릭했을 때만 선택 해제
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.target === e.target.getStage()) {
       clearSelection();
     }
-  };
+  }, [clearSelection]);
 
-  const handleFurnitureSelect = (id: string) => {
+  const handleFurnitureSelect = useCallback((id: string) => {
     selectEntity({ kind: "furniture", id });
-  };
+  }, [selectEntity]);
 
-  const handleOpeningSelect = (kind: "door" | "window", id: string) => {
+  const handleOpeningSelect = useCallback((kind: "door" | "window", id: string) => {
     selectEntity({ kind, id });
-  };
+  }, [selectEntity]);
 
-  const handleOpeningUpdate = (kind: "door" | "window", id: string, patch: any) => {
+  const handleOpeningUpdate = useCallback((kind: "door" | "window", id: string, patch: any) => {
     if (kind === "door") {
       updateDoor(id, patch);
     } else {
       updateWindow(id, patch);
     }
-  };
+  }, [updateDoor, updateWindow]);
 
   const furnitureForDimensions =
     placingFurniture && placingFurnitureId

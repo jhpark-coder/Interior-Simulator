@@ -1,8 +1,14 @@
 import { useRef, useState, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
-import type { Door, FurnitureItem, Room } from "../types";
+import type { Door, Room } from "../types";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import {
+  checkDoorFurnitureCollision,
+  getDoorSwingPlacement,
+  getSlidingDoorPlacement,
+  interpolateAnimatedValue,
+} from "./scene3dMath";
 
 type DoorMeshProps = {
   door: Door;
@@ -61,130 +67,26 @@ function DoorKnob({
   );
 }
 
-function checkDoorFurnitureCollision(
-  angle: number,
-  hingeX: number,
-  hingeZ: number,
-  baseRot: number,
-  doorWidth: number,
-  hingeDir: number,
-  zOff: number,
-  doorHalfT: number,
-  furniture: FurnitureItem[],
-): boolean {
-  const totalAngle = baseRot + angle;
-  const cosA = Math.cos(totalAngle);
-  const sinA = Math.sin(totalAngle);
-  const margin = 15;
-
-  // Check 3 lines: door center + both faces (± half thickness)
-  const zLines = [zOff - doorHalfT, zOff, zOff + doorHalfT];
-
-  for (const z of zLines) {
-    for (let s = 1; s <= 10; s++) {
-      const r = (doorWidth * s) / 10;
-      const wx = hingeX + hingeDir * r * cosA + z * sinA;
-      const wz = hingeZ - hingeDir * r * sinA + z * cosA;
-
-      for (const item of furniture) {
-        const cx = item.x + item.width / 2;
-        const cz = item.y + item.depth / 2;
-        const dx = wx - cx;
-        const dz = wz - cz;
-
-        const rot = (item.rotation * Math.PI) / 180;
-        const cosR = Math.cos(rot);
-        const sinR = Math.sin(rot);
-        const lx = dx * cosR + dz * sinR;
-        const lz = -dx * sinR + dz * cosR;
-
-        if (
-          Math.abs(lx) <= item.width / 2 + margin &&
-          Math.abs(lz) <= item.depth / 2 + margin
-        ) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 export function DoorMesh({ door, room }: DoorMeshProps) {
   const panelGroupRef = useRef<Group>(null);
   const [isOpen, setIsOpen] = useState(false);
   const currentAngleRef = useRef(0);
   const furniture = useSimulatorStore((s) => s.furniture);
-
-  // Calculate max open angle
-  const isVerticalWall = door.wall === "east" || door.wall === "west";
-  const baseAngle =
-    door.swing === "inward"
-      ? door.hinge === "left"
-        ? -90
-        : 90
-      : door.hinge === "left"
-        ? 90
-        : -90;
-  const maxOpenAngle = (isVerticalWall ? -baseAngle : baseAngle) * (Math.PI / 180);
-
-  const targetAngle = isOpen ? maxOpenAngle : 0;
-
-  // Swing door coordinates (computed early for collision check in useFrame)
-  const doorY = door.height / 2;
-  let hingePosition: [number, number, number] = [0, 0, 0];
-  let baseRotation = 0;
-
-  switch (door.wall) {
-    case "north":
-      hingePosition = [
-        door.offset + (door.hinge === "left" ? 0 : door.width),
-        doorY,
-        0,
-      ];
-      baseRotation = 0;
-      break;
-    case "south":
-      hingePosition = [
-        door.offset + (door.hinge === "left" ? door.width : 0),
-        doorY,
-        room.height,
-      ];
-      baseRotation = Math.PI;
-      break;
-    case "east":
-      hingePosition = [
-        room.width,
-        doorY,
-        door.offset + (door.hinge === "left" ? door.width : 0),
-      ];
-      baseRotation = Math.PI / 2;
-      break;
-    case "west":
-      hingePosition = [
-        0,
-        doorY,
-        door.offset + (door.hinge === "left" ? 0 : door.width),
-      ];
-      baseRotation = -Math.PI / 2;
-      break;
-  }
-
-  const zOffset =
-    door.swing === "inward"
-      ? room.wallThickness / 2
-      : -room.wallThickness / 2;
-
-  // Animate door with furniture collision
-  const hingeDir = door.hinge === "left" ? 1 : -1;
-  const doorHalfT = door.thickness / 2;
+  const swingPlacement =
+    door.doorType === "swing" ? getDoorSwingPlacement(door, room) : null;
+  const targetAngle = isOpen && swingPlacement ? swingPlacement.maxOpenAngle : 0;
+  const doorHalfThickness = door.thickness / 2;
 
   useFrame(() => {
-    if (!panelGroupRef.current) return;
-    const diff = targetAngle - currentAngleRef.current;
-    if (Math.abs(diff) < 0.001) return;
+    if (!panelGroupRef.current || !swingPlacement) return;
 
-    let nextAngle = currentAngleRef.current + diff * 0.1;
+    let nextAngle = interpolateAnimatedValue(
+      currentAngleRef.current,
+      targetAngle,
+      0.1,
+      0.001
+    );
+    if (nextAngle === currentAngleRef.current) return;
 
     // Only check collision when opening (angle magnitude increasing)
     const isOpening =
@@ -192,17 +94,17 @@ export function DoorMesh({ door, room }: DoorMeshProps) {
 
     if (
       isOpening &&
-      checkDoorFurnitureCollision(
-        nextAngle,
-        hingePosition[0],
-        hingePosition[2],
-        baseRotation,
-        door.width,
-        hingeDir,
-        zOffset,
-        doorHalfT,
+      checkDoorFurnitureCollision({
+        angle: nextAngle,
+        hingeX: swingPlacement.hingePosition[0],
+        hingeZ: swingPlacement.hingePosition[2],
+        baseRotation: swingPlacement.baseRotation,
+        doorWidth: door.width,
+        hingeDir: swingPlacement.hingeDir,
+        zOffset: swingPlacement.zOffset,
+        doorHalfThickness,
         furniture,
-      )
+      })
     ) {
       // Binary search for closest non-colliding angle
       let lo = currentAngleRef.current;
@@ -210,17 +112,17 @@ export function DoorMesh({ door, room }: DoorMeshProps) {
       for (let i = 0; i < 5; i++) {
         const mid = (lo + hi) / 2;
         if (
-          checkDoorFurnitureCollision(
-            mid,
-            hingePosition[0],
-            hingePosition[2],
-            baseRotation,
-            door.width,
-            hingeDir,
-            zOffset,
-            doorHalfT,
+          checkDoorFurnitureCollision({
+            angle: mid,
+            hingeX: swingPlacement.hingePosition[0],
+            hingeZ: swingPlacement.hingePosition[2],
+            baseRotation: swingPlacement.baseRotation,
+            doorWidth: door.width,
+            hingeDir: swingPlacement.hingeDir,
+            zOffset: swingPlacement.zOffset,
+            doorHalfThickness,
             furniture,
-          )
+          })
         ) {
           hi = mid;
         } else {
@@ -241,29 +143,7 @@ export function DoorMesh({ door, room }: DoorMeshProps) {
   }, [door.doorType]);
 
   if (door.doorType === "sliding") {
-    // Sliding door
-    let position: [number, number, number] = [0, 0, 0];
-    let rotationY = 0;
-    const doorY = door.height / 2;
-
-    switch (door.wall) {
-      case "north":
-        position = [door.offset + door.width / 2, doorY, 0];
-        rotationY = 0;
-        break;
-      case "south":
-        position = [door.offset + door.width / 2, doorY, room.height];
-        rotationY = Math.PI;
-        break;
-      case "east":
-        position = [room.width, doorY, door.offset + door.width / 2];
-        rotationY = Math.PI / 2;
-        break;
-      case "west":
-        position = [0, doorY, door.offset + door.width / 2];
-        rotationY = -Math.PI / 2;
-        break;
-    }
+    const { position, rotationY } = getSlidingDoorPlacement(door, room);
 
     return (
       <group position={position} rotation={[0, rotationY, 0]}>
@@ -279,6 +159,9 @@ export function DoorMesh({ door, room }: DoorMeshProps) {
   const handleX =
     door.hinge === "left" ? door.width - 150 : -(door.width - 150);
   const handleY = -(door.height / 2 - 1000);
+  const hingePosition = swingPlacement?.hingePosition ?? [0, 0, 0];
+  const baseRotation = swingPlacement?.baseRotation ?? 0;
+  const zOffset = swingPlacement?.zOffset ?? 0;
 
   return (
     <group position={hingePosition} rotation={[0, baseRotation, 0]}>

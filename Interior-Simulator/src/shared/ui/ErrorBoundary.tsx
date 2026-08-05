@@ -15,17 +15,17 @@ export class ErrorBoundary extends Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  state: ErrorBoundaryState = { hasError: false };
+  override state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, message: error.message };
   }
 
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     console.error("App crashed", error);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
