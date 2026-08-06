@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
-import {
-  createProjectPackage,
-  readProjectPackage,
-} from "../../store/persistence/projectPackage";
+import { createProjectPackage, readProjectPackage } from "../../store/persistence/projectPackage";
 import {
   listProjects,
   loadProject,
@@ -11,6 +8,7 @@ import {
   saveProject,
   saveProjectAsset,
 } from "../../store/persistence/projectDb";
+import { saveActiveProjectBeforeTransition } from "../../store/persistence/projectTransition";
 import "./ProjectToolbar.css";
 
 function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -19,10 +17,7 @@ function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return copy.buffer;
 }
 
-function projectOptionLabel(project: {
-  name: string;
-  updatedAt: string;
-}): string {
+function projectOptionLabel(project: { name: string; updatedAt: string }): string {
   const updatedAt = new Date(project.updatedAt);
   if (Number.isNaN(updatedAt.getTime())) return project.name;
   const timestamp = new Intl.DateTimeFormat("ko-KR", {
@@ -44,40 +39,22 @@ export function ProjectToolbar() {
   const projectId = useSimulatorStore((state) => state.projectId);
   const projectName = useSimulatorStore((state) => state.projectName);
   const setProjectName = useSimulatorStore((state) => state.setProjectName);
-  const createNewProject = useSimulatorStore(
-    (state) => state.createNewProject
-  );
+  const createNewProject = useSimulatorStore((state) => state.createNewProject);
   const scenarios = useSimulatorStore((state) => state.scenarios);
-  const activeScenarioId = useSimulatorStore(
-    (state) => state.activeScenarioId
-  );
+  const activeScenarioId = useSimulatorStore((state) => state.activeScenarioId);
   const switchScenario = useSimulatorStore((state) => state.switchScenario);
   const createScenario = useSimulatorStore((state) => state.createScenario);
-  const duplicateScenario = useSimulatorStore(
-    (state) => state.duplicateScenario
-  );
+  const duplicateScenario = useSimulatorStore((state) => state.duplicateScenario);
   const deleteScenario = useSimulatorStore((state) => state.deleteScenario);
   const revisions = useSimulatorStore((state) => state.structureRevisions);
-  const activeRevisionId = useSimulatorStore(
-    (state) => state.activeStructureRevisionId
-  );
-  const restoreRevision = useSimulatorStore(
-    (state) => state.restoreStructureRevision
-  );
-  const renameStructureRevision = useSimulatorStore(
-    (state) => state.renameStructureRevision
-  );
-  const createRevision = useSimulatorStore(
-    (state) => state.createStructureRevision
-  );
+  const activeRevisionId = useSimulatorStore((state) => state.activeStructureRevisionId);
+  const restoreRevision = useSimulatorStore((state) => state.restoreStructureRevision);
+  const renameStructureRevision = useSimulatorStore((state) => state.renameStructureRevision);
+  const createRevision = useSimulatorStore((state) => state.createStructureRevision);
   const snapshotProject = useSimulatorStore((state) => state.snapshotProject);
   const importProject = useSimulatorStore((state) => state.importProject);
-  const setObjectUrl = useSimulatorStore(
-    (state) => state.setFloorPlanObjectUrl
-  );
-  const projectObjectUrls = useSimulatorStore(
-    (state) => state.floorPlanObjectUrls
-  );
+  const setObjectUrl = useSimulatorStore((state) => state.setFloorPlanObjectUrl);
+  const projectObjectUrls = useSimulatorStore((state) => state.floorPlanObjectUrls);
 
   const refreshProjects = async () => {
     setSavedProjects(await listProjects());
@@ -88,34 +65,42 @@ export function ProjectToolbar() {
   }, [projectId]);
 
   const handleCreateProject = async () => {
-    Object.values(projectObjectUrls).forEach((url) =>
-      URL.revokeObjectURL(url)
-    );
-    const id = createNewProject();
-    const project = useSimulatorStore.getState().snapshotProject();
-    await saveProject(project);
-    localStorage.setItem("interior-simulator-last-project", id);
-    await refreshProjects();
-    setStatus("새 프로젝트 생성됨");
+    try {
+      setStatus("현재 프로젝트 저장 중…");
+      await saveActiveProjectBeforeTransition();
+      Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
+      const id = createNewProject();
+      const project = useSimulatorStore.getState().snapshotProject();
+      await saveProject(project);
+      localStorage.setItem("interior-simulator-last-project", id);
+      await refreshProjects();
+      setStatus("새 프로젝트 생성됨");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "새 프로젝트 생성 실패");
+    }
   };
 
   const handleOpenLocalProject = async (id: string) => {
     if (!id || id === projectId) return;
-    const project = await loadProject(id);
-    if (!project) {
-      setStatus("저장된 프로젝트를 찾을 수 없습니다.");
-      return;
+    try {
+      const project = await loadProject(id);
+      if (!project) {
+        setStatus("저장된 프로젝트를 찾을 수 없습니다.");
+        return;
+      }
+      setStatus("현재 프로젝트 저장 중…");
+      await saveActiveProjectBeforeTransition();
+      Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
+      importProject(project);
+      for (const asset of project.assets) {
+        const blob = await loadProjectAsset(project.id, asset.id);
+        if (blob) setObjectUrl(asset.id, URL.createObjectURL(blob));
+      }
+      localStorage.setItem("interior-simulator-last-project", project.id);
+      setStatus("로컬 프로젝트 열기 완료");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "로컬 프로젝트 열기 실패");
     }
-    Object.values(projectObjectUrls).forEach((url) =>
-      URL.revokeObjectURL(url)
-    );
-    importProject(project);
-    for (const asset of project.assets) {
-      const blob = await loadProjectAsset(project.id, asset.id);
-      if (blob) setObjectUrl(asset.id, URL.createObjectURL(blob));
-    }
-    localStorage.setItem("interior-simulator-last-project", project.id);
-    setStatus("로컬 프로젝트 열기 완료");
   };
 
   const handleExport = async () => {
@@ -148,9 +133,9 @@ export function ProjectToolbar() {
     try {
       setStatus("프로젝트 읽는 중…");
       const imported = await readProjectPackage(await file.arrayBuffer());
-      Object.values(projectObjectUrls).forEach((url) =>
-        URL.revokeObjectURL(url)
-      );
+      setStatus("현재 프로젝트 저장 중…");
+      await saveActiveProjectBeforeTransition();
+      Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
       importProject(imported.project);
       for (const asset of imported.project.assets) {
         const bytes = imported.assets.get(asset.id);
@@ -192,11 +177,7 @@ export function ProjectToolbar() {
           </option>
         ))}
       </select>
-      <button
-        onClick={() => void handleCreateProject()}
-      >
-        새 프로젝트
-      </button>
+      <button onClick={() => void handleCreateProject()}>새 프로젝트</button>
 
       <div className="project-toolbar-group">
         <span>배치안</span>
@@ -219,10 +200,7 @@ export function ProjectToolbar() {
           새 배치
         </button>
         <button onClick={() => duplicateScenario(activeScenarioId)}>복제</button>
-        <button
-          disabled={scenarios.length <= 1}
-          onClick={() => deleteScenario(activeScenarioId)}
-        >
+        <button disabled={scenarios.length <= 1} onClick={() => deleteScenario(activeScenarioId)}>
           삭제
         </button>
       </div>
@@ -251,9 +229,7 @@ export function ProjectToolbar() {
         </button>
         <button
           onClick={() => {
-            const current = revisions.find(
-              (revision) => revision.id === activeRevisionId
-            );
+            const current = revisions.find((revision) => revision.id === activeRevisionId);
             if (!current) return;
             const name = window.prompt("구조 리비전 이름", current.name);
             if (name !== null) renameStructureRevision(current.id, name);

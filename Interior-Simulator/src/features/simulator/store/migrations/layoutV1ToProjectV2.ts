@@ -1,12 +1,6 @@
 import type { Door, LayoutDoc, WallSide, Window } from "../../types";
 import type { InteriorProject } from "../../domain/project";
-import type {
-  FloorStructure,
-  Opening,
-  RoomRegion,
-  SourceInfo,
-  Wall,
-} from "../../domain/structure";
+import type { FloorStructure, Opening, RoomRegion, SourceInfo, Wall } from "../../domain/structure";
 
 const MIGRATED_SOURCE: SourceInfo = {
   origin: "migrated",
@@ -116,23 +110,23 @@ export function migrateLegacyLayoutToStructure(layout: LayoutDoc): FloorStructur
     ceilingHeight: layout.room.ceilingHeight,
     walls: createLegacyWalls(layout),
     rooms: [createLegacyRoom(layout)],
-    openings: [
-      ...layout.doors.map(migrateDoor),
-      ...layout.windows.map(migrateWindow),
-    ],
+    openings: [...layout.doors.map(migrateDoor), ...layout.windows.map(migrateWindow)],
   };
 }
 
 export function migrateLegacyLayoutToProject(
   layout: LayoutDoc,
-  projectName = "가져온 레이아웃"
+  projectName = "가져온 레이아웃",
+  projectId = "project-migrated"
 ): InteriorProject {
   const revisionId = "revision-migrated";
   const scenarioId = "scenario-migrated";
+  const createdAt = normalizeTimestamp(layout.meta.createdAt);
+  const updatedAt = normalizeTimestamp(layout.meta.updatedAt);
   return {
     version: "2.0.0",
-    id: "project-migrated",
-    name: projectName,
+    id: projectId,
+    name: projectName.trim() || "가져온 레이아웃",
     sources: [],
     assets: [],
     structureRevisions: [
@@ -141,7 +135,7 @@ export function migrateLegacyLayoutToProject(
         name: "기존 레이아웃 변환본",
         origin: "migrated",
         structure: migrateLegacyLayoutToStructure(layout),
-        createdAt: layout.meta.createdAt,
+        createdAt,
       },
     ],
     activeStructureRevisionId: revisionId,
@@ -152,16 +146,21 @@ export function migrateLegacyLayoutToProject(
         structureRevisionId: revisionId,
         furniture: layout.furniture.map((item) => ({ ...item })),
         materials: [],
-        createdAt: layout.meta.createdAt,
-        updatedAt: layout.meta.updatedAt,
+        createdAt,
+        updatedAt,
       },
     ],
     activeScenarioId: scenarioId,
     memoryPins: [],
     savedViewpoints: [],
     meta: {
-      createdAt: layout.meta.createdAt,
-      updatedAt: layout.meta.updatedAt,
+      createdAt,
+      updatedAt,
     },
   };
+}
+
+function normalizeTimestamp(value: string): string {
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? new Date(0).toISOString() : timestamp.toISOString();
 }

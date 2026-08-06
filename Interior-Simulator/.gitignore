@@ -30,4 +30,10 @@ Thumbs.db
 
 # Project docs (local notes/plans)
 *.md
+!README.md
+!todo.md
+!AGENTS.md
+!CLAUDE.md
 !docs/FLOORPLAN_TO_3D_DEVELOPMENT_PLAN.md
+!docs/IMPLEMENTATION_STATUS.md
+!docs/DETECTION_EVALUATION.md

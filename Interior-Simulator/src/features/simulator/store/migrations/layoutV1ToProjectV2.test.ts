@@ -38,13 +38,9 @@ describe("legacy layout to project v2 migration", () => {
   it("keeps legacy opening offsets on their corresponding walls", () => {
     const structure = migrateLegacyLayoutToStructure(LEGACY_LAYOUT_V110_FIXTURE);
     const migratedDoor = structure.openings.find((opening) => opening.kind === "door")!;
-    const migratedWindow = structure.openings.find(
-      (opening) => opening.kind === "window"
-    )!;
+    const migratedWindow = structure.openings.find((opening) => opening.kind === "window")!;
     const doorWall = structure.walls.find((wall) => wall.id === migratedDoor.wallId)!;
-    const windowWall = structure.walls.find(
-      (wall) => wall.id === migratedWindow.wallId
-    )!;
+    const windowWall = structure.walls.find((wall) => wall.id === migratedWindow.wallId)!;
 
     expect(pointAlongWall(doorWall, migratedDoor.offset)).toEqual({
       x: 700,
@@ -54,5 +50,17 @@ describe("legacy layout to project v2 migration", () => {
       x: 5000,
       y: 1000,
     });
+  });
+
+  it("normalizes invalid legacy timestamps and accepts a caller project id", () => {
+    const layout = {
+      ...LEGACY_LAYOUT_V120_FIXTURE,
+      meta: { createdAt: "legacy", updatedAt: "legacy" },
+    };
+    const project = migrateLegacyLayoutToProject(layout, "가져온 집", "project-imported");
+
+    expect(project.id).toBe("project-imported");
+    expect(project.meta.createdAt).toBe("1970-01-01T00:00:00.000Z");
+    expect(validateInteriorProject(project).success).toBe(true);
   });
 });

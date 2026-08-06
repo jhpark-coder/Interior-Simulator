@@ -21,26 +21,18 @@ export type FloorPlanSliceState = {
   floorPlanObjectUrls: Record<string, string>;
   activeFloorPlanSourceId: string | null;
   addFloorPlanSource: (input: AddFloorPlanSourceInput) => string;
-  updateFloorPlanSource: (
-    id: string,
-    patch: Partial<Omit<FloorPlanSource, "id">>
-  ) => void;
+  updateFloorPlanSource: (id: string, patch: Partial<Omit<FloorPlanSource, "id">>) => void;
   removeFloorPlanSource: (id: string) => void;
   setActiveFloorPlanSource: (id: string | null) => void;
-  addCalibrationAnchor: (
-    sourceId: string,
-    anchor: Omit<CalibrationAnchor, "id">
-  ) => void;
+  addCalibrationAnchor: (sourceId: string, anchor: Omit<CalibrationAnchor, "id">) => void;
   clearCalibration: (sourceId: string) => void;
   setFloorPlanObjectUrl: (assetId: string, objectUrl: string) => void;
+  removeFloorPlanObjectUrl: (assetId: string) => void;
 };
 
-export const createFloorPlanSlice: StateCreator<
-  SimulatorState,
-  [],
-  [],
-  FloorPlanSliceState
-> = (set) => ({
+export const createFloorPlanSlice: StateCreator<SimulatorState, [], [], FloorPlanSliceState> = (
+  set
+) => ({
   floorPlanSources: [],
   floorPlanObjectUrls: {},
   activeFloorPlanSourceId: null,
@@ -97,9 +89,7 @@ export const createFloorPlanSlice: StateCreator<
       const source = state.floorPlanSources.find((candidate) => candidate.id === id);
       const floorPlanObjectUrls = { ...state.floorPlanObjectUrls };
       if (source) delete floorPlanObjectUrls[source.assetId];
-      const remaining = state.floorPlanSources.filter(
-        (candidate) => candidate.id !== id
-      );
+      const remaining = state.floorPlanSources.filter((candidate) => candidate.id !== id);
       return {
         floorPlanSources: remaining,
         floorPlanObjectUrls,
@@ -110,17 +100,13 @@ export const createFloorPlanSlice: StateCreator<
       };
     }),
 
-  setActiveFloorPlanSource: (activeFloorPlanSourceId) =>
-    set({ activeFloorPlanSourceId }),
+  setActiveFloorPlanSource: (activeFloorPlanSourceId) => set({ activeFloorPlanSourceId }),
 
   addCalibrationAnchor: (sourceId, input) =>
     set((state) => ({
       floorPlanSources: state.floorPlanSources.map((source) => {
         if (source.id !== sourceId) return source;
-        const calibrationAnchors = [
-          ...source.calibrationAnchors,
-          { ...input, id: createId() },
-        ];
+        const calibrationAnchors = [...source.calibrationAnchors, { ...input, id: createId() }];
         return {
           ...source,
           calibrationAnchors,
@@ -153,4 +139,11 @@ export const createFloorPlanSlice: StateCreator<
         [assetId]: objectUrl,
       },
     })),
+
+  removeFloorPlanObjectUrl: (assetId) =>
+    set((state) => {
+      const floorPlanObjectUrls = { ...state.floorPlanObjectUrls };
+      delete floorPlanObjectUrls[assetId];
+      return { floorPlanObjectUrls };
+    }),
 });

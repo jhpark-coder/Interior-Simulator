@@ -1,18 +1,8 @@
 import type { StateCreator } from "zustand";
-import type {
-  InteriorProject,
-  ProjectAsset,
-  StructureRevision,
-} from "../../domain/project";
+import type { InteriorProject, ProjectAsset, StructureRevision } from "../../domain/project";
 import type { Scenario } from "../../domain/scenario";
-import type {
-  MaterialAssignment,
-  MaterialSurface,
-} from "../../domain/scenario";
-import {
-  createRectangleStructure,
-  validateStructure,
-} from "../../domain/structure";
+import type { MaterialAssignment, MaterialSurface } from "../../domain/scenario";
+import { createRectangleStructure, validateStructure } from "../../domain/structure";
 import { DEFAULT_ROOM } from "../../constants";
 import { createId } from "../createId";
 import type { SimulatorState } from "../useSimulatorStore";
@@ -59,11 +49,7 @@ export type ProjectSliceState = {
   renameScenario: (id: string, name: string) => void;
   deleteScenario: (id: string) => void;
   syncActiveScenario: () => void;
-  setScenarioMaterial: (
-    targetId: string,
-    surface: MaterialSurface,
-    color: string
-  ) => void;
+  setScenarioMaterial: (targetId: string, surface: MaterialSurface, color: string) => void;
   snapshotProject: () => InteriorProject;
   importProject: (project: InteriorProject) => void;
 };
@@ -87,12 +73,10 @@ function syncScenarioFurniture(
   );
 }
 
-export const createProjectSlice: StateCreator<
-  SimulatorState,
-  [],
-  [],
-  ProjectSliceState
-> = (set, get) => ({
+export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSliceState> = (
+  set,
+  get
+) => ({
   projectId: createId(),
   projectName: "나의 집",
   projectCreatedAt: initialTimestamp,
@@ -184,10 +168,7 @@ export const createProjectSlice: StateCreator<
 
   registerProjectAsset: (asset) =>
     set((state) => ({
-      projectAssets: [
-        ...state.projectAssets.filter((item) => item.id !== asset.id),
-        asset,
-      ],
+      projectAssets: [...state.projectAssets.filter((item) => item.id !== asset.id), asset],
     })),
 
   unregisterProjectAsset: (assetId) =>
@@ -240,9 +221,7 @@ export const createProjectSlice: StateCreator<
   renameStructureRevision: (id, name) =>
     set((state) => ({
       structureRevisions: state.structureRevisions.map((revision) =>
-        revision.id === id
-          ? { ...revision, name: name.trim() || revision.name }
-          : revision
+        revision.id === id ? { ...revision, name: name.trim() || revision.name } : revision
       ),
     })),
 
@@ -334,11 +313,8 @@ export const createProjectSlice: StateCreator<
       activeScenarioId: id,
       furniture: target.furniture.map((item) => ({ ...item })),
       activeMaterials: target.materials.map((item) => ({ ...item })),
-      structure: revision
-        ? structuredClone(revision.structure)
-        : state.structure,
-      activeStructureRevisionId:
-        revision?.id ?? state.activeStructureRevisionId,
+      structure: revision ? structuredClone(revision.structure) : state.structure,
+      activeStructureRevisionId: revision?.id ?? state.activeStructureRevisionId,
       historyPast: [],
       historyFuture: [],
       structurePast: [],
@@ -362,16 +338,30 @@ export const createProjectSlice: StateCreator<
     if (state.scenarios.length <= 1) return;
     const remaining = state.scenarios.filter((scenario) => scenario.id !== id);
     if (remaining.length === state.scenarios.length) return;
-    const next =
-      id === state.activeScenarioId
-        ? remaining[0]
-        : remaining.find((scenario) => scenario.id === state.activeScenarioId) ??
-          remaining[0];
+    const deletingActiveScenario = id === state.activeScenarioId;
+    const next = deletingActiveScenario
+      ? remaining[0]
+      : (remaining.find((scenario) => scenario.id === state.activeScenarioId) ?? remaining[0]);
+    const nextRevision = deletingActiveScenario
+      ? state.structureRevisions.find((revision) => revision.id === next.structureRevisionId)
+      : undefined;
     set({
       scenarios: remaining,
       activeScenarioId: next.id,
       furniture: next.furniture.map((item) => ({ ...item })),
       activeMaterials: next.materials.map((item) => ({ ...item })),
+      ...(nextRevision
+        ? {
+            structure: structuredClone(nextRevision.structure),
+            activeStructureRevisionId: nextRevision.id,
+            structureIssues: validateStructure(nextRevision.structure),
+            structurePast: [],
+            structureFuture: [],
+            historyPast: [],
+            historyFuture: [],
+            selectedStructureEntity: null,
+          }
+        : {}),
       selectedEntity: null,
     });
   },
@@ -443,9 +433,8 @@ export const createProjectSlice: StateCreator<
 
   importProject: (project) => {
     const revision =
-      project.structureRevisions.find(
-        (item) => item.id === project.activeStructureRevisionId
-      ) ?? project.structureRevisions[0];
+      project.structureRevisions.find((item) => item.id === project.activeStructureRevisionId) ??
+      project.structureRevisions[0];
     const scenario =
       project.scenarios.find((item) => item.id === project.activeScenarioId) ??
       project.scenarios[0];

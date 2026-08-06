@@ -6,6 +6,7 @@ import { createRectangularStructureFixture } from "../../domain/structure";
 import {
   closeProjectDatabaseForTests,
   deleteProject,
+  deleteProjectAssets,
   listProjects,
   loadProject,
   loadProjectAsset,
@@ -84,5 +85,17 @@ describe("projectDb", () => {
     await deleteProject(project.id);
     expect(await loadProject(project.id)).toBeNull();
     expect(await loadProjectAsset(project.id, "asset-1")).toBeNull();
+  });
+
+  it("deletes multiple project assets in one operation", async () => {
+    const project = projectFixture("project-multiple-assets");
+    await saveProject(project);
+    await saveProjectAsset(project.id, "asset-1", new Blob(["one"]));
+    await saveProjectAsset(project.id, "asset-2", new Blob(["two"]));
+
+    await deleteProjectAssets(project.id, ["asset-1", "asset-2"]);
+
+    expect(await loadProjectAsset(project.id, "asset-1")).toBeNull();
+    expect(await loadProjectAsset(project.id, "asset-2")).toBeNull();
   });
 });

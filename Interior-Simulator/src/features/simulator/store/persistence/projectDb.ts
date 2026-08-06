@@ -35,32 +35,26 @@ interface InteriorSimulatorDatabase extends DBSchema {
   };
 }
 
-let databasePromise:
-  | Promise<IDBPDatabase<InteriorSimulatorDatabase>>
-  | undefined;
+let databasePromise: Promise<IDBPDatabase<InteriorSimulatorDatabase>> | undefined;
 
 function database() {
   if (!databasePromise) {
-    databasePromise = openDB<InteriorSimulatorDatabase>(
-      DATABASE_NAME,
-      DATABASE_VERSION,
-      {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains("projects")) {
-            const projects = db.createObjectStore("projects", {
-              keyPath: "id",
-            });
-            projects.createIndex("by-updated-at", "updatedAt");
-          }
-          if (!db.objectStoreNames.contains("assets")) {
-            const assets = db.createObjectStore("assets", {
-              keyPath: "key",
-            });
-            assets.createIndex("by-project", "projectId");
-          }
-        },
-      }
-    );
+    databasePromise = openDB<InteriorSimulatorDatabase>(DATABASE_NAME, DATABASE_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("projects")) {
+          const projects = db.createObjectStore("projects", {
+            keyPath: "id",
+          });
+          projects.createIndex("by-updated-at", "updatedAt");
+        }
+        if (!db.objectStoreNames.contains("assets")) {
+          const assets = db.createObjectStore("assets", {
+            keyPath: "key",
+          });
+          assets.createIndex("by-project", "projectId");
+        }
+      },
+    });
   }
   return databasePromise;
 }
@@ -75,9 +69,7 @@ export async function saveProject(project: InteriorProject): Promise<void> {
   });
 }
 
-export async function loadProject(
-  projectId: string
-): Promise<InteriorProject | null> {
+export async function loadProject(projectId: string): Promise<InteriorProject | null> {
   const db = await database();
   const record = await db.get("projects", projectId);
   return record?.project ?? null;
@@ -101,9 +93,7 @@ export async function deleteProject(projectId: string): Promise<void> {
     .objectStore("assets")
     .index("by-project")
     .getAllKeys(projectId);
-  await Promise.all(
-    assetKeys.map((key) => transaction.objectStore("assets").delete(key))
-  );
+  await Promise.all(assetKeys.map((key) => transaction.objectStore("assets").delete(key)));
   await transaction.done;
 }
 
@@ -121,21 +111,24 @@ export async function saveProjectAsset(
   });
 }
 
-export async function loadProjectAsset(
-  projectId: string,
-  assetId: string
-): Promise<Blob | null> {
+export async function loadProjectAsset(projectId: string, assetId: string): Promise<Blob | null> {
   const db = await database();
   const record = await db.get("assets", `${projectId}:${assetId}`);
   return record?.blob ?? null;
 }
 
-export async function deleteProjectAsset(
-  projectId: string,
-  assetId: string
-): Promise<void> {
+export async function deleteProjectAsset(projectId: string, assetId: string): Promise<void> {
+  await deleteProjectAssets(projectId, [assetId]);
+}
+
+export async function deleteProjectAssets(projectId: string, assetIds: string[]): Promise<void> {
+  if (assetIds.length === 0) return;
   const db = await database();
-  await db.delete("assets", `${projectId}:${assetId}`);
+  const transaction = db.transaction("assets", "readwrite");
+  await Promise.all(
+    [...new Set(assetIds)].map((assetId) => transaction.store.delete(`${projectId}:${assetId}`))
+  );
+  await transaction.done;
 }
 
 export function resetProjectDatabaseConnectionForTests(): void {

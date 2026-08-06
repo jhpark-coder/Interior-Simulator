@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { deleteProjectAsset, saveProjectAsset } from "../../store/persistence/projectDb";
+import { deleteProjectAssets, saveProjectAsset } from "../../store/persistence/projectDb";
+import { collectUnusedMemoryAssetIds } from "../../store/persistence/memoryAssetCleanup";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
 import "./MemoryWorkspace.css";
 
@@ -14,9 +15,7 @@ async function createThumbnail(file: File): Promise<Blob | null> {
     if (!context) return null;
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    return await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.78)
-    );
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
   } catch {
     return null;
   }
@@ -29,27 +28,16 @@ export function MemoryInspector() {
   const pin = pins.find((item) => item.id === selectedId) ?? null;
   const updatePin = useSimulatorStore((state) => state.updateMemoryPin);
   const removePin = useSimulatorStore((state) => state.removeMemoryPin);
-  const attachPhoto = useSimulatorStore(
-    (state) => state.attachPhotoToMemoryPin
-  );
-  const detachPhoto = useSimulatorStore(
-    (state) => state.detachPhotoFromMemoryPin
-  );
+  const attachPhoto = useSimulatorStore((state) => state.attachPhotoToMemoryPin);
+  const detachPhoto = useSimulatorStore((state) => state.detachPhotoFromMemoryPin);
   const projectId = useSimulatorStore((state) => state.projectId);
   const assets = useSimulatorStore((state) => state.projectAssets);
-  const registerAsset = useSimulatorStore(
-    (state) => state.registerProjectAsset
-  );
-  const unregisterAsset = useSimulatorStore(
-    (state) => state.unregisterProjectAsset
-  );
+  const registerAsset = useSimulatorStore((state) => state.registerProjectAsset);
+  const unregisterAsset = useSimulatorStore((state) => state.unregisterProjectAsset);
   const objectUrls = useSimulatorStore((state) => state.floorPlanObjectUrls);
-  const setObjectUrl = useSimulatorStore(
-    (state) => state.setFloorPlanObjectUrl
-  );
-  const addViewpoint = useSimulatorStore(
-    (state) => state.addSavedViewpoint
-  );
+  const setObjectUrl = useSimulatorStore((state) => state.setFloorPlanObjectUrl);
+  const removeObjectUrl = useSimulatorStore((state) => state.removeFloorPlanObjectUrl);
+  const addViewpoint = useSimulatorStore((state) => state.addSavedViewpoint);
 
   if (!pin) {
     return (
@@ -94,22 +82,34 @@ export function MemoryInspector() {
     }
   };
 
-  const handleRemovePhoto = async (assetId: string) => {
-    detachPhoto(pin.id, assetId);
-    const usedByAnotherPin = pins.some(
-      (item) => item.id !== pin.id && item.assetIds.includes(assetId)
-    );
-    if (!usedByAnotherPin) {
-      const thumbnails = assets.filter(
-        (asset) =>
-          asset.kind === "thumbnail" && asset.parentAssetId === assetId
-      );
-      for (const thumbnail of thumbnails) {
-        await deleteProjectAsset(projectId, thumbnail.id);
-        unregisterAsset(thumbnail.id);
-      }
-      await deleteProjectAsset(projectId, assetId);
+  const removeUnusedAssets = async (assetIds: string[]) => {
+    if (assetIds.length === 0) return;
+    await deleteProjectAssets(projectId, assetIds);
+    assetIds.forEach((assetId) => {
+      const objectUrl = objectUrls[assetId];
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      removeObjectUrl(assetId);
       unregisterAsset(assetId);
+    });
+  };
+
+  const handleRemovePhoto = async (assetId: string) => {
+    const unusedAssetIds = collectUnusedMemoryAssetIds(pin.id, [assetId], pins, assets);
+    try {
+      await removeUnusedAssets(unusedAssetIds);
+      detachPhoto(pin.id, assetId);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "사진을 삭제하지 못했습니다.");
+    }
+  };
+
+  const handleRemovePin = async () => {
+    const unusedAssetIds = collectUnusedMemoryAssetIds(pin.id, pin.assetIds, pins, assets);
+    try {
+      await removeUnusedAssets(unusedAssetIds);
+      removePin(pin.id);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "공간 기록을 삭제하지 못했습니다.");
     }
   };
 
@@ -136,9 +136,7 @@ export function MemoryInspector() {
         <span>제목</span>
         <input
           value={pin.title}
-          onChange={(event) =>
-            updatePin(pin.id, { title: event.target.value })
-          }
+          onChange={(event) => updatePin(pin.id, { title: event.target.value })}
         />
       </label>
       <label className="memory-field">
@@ -147,10 +145,7 @@ export function MemoryInspector() {
           value={pin.temporalState}
           onChange={(event) =>
             updatePin(pin.id, {
-              temporalState: event.target.value as
-                | "past"
-                | "current"
-                | "planned",
+              temporalState: event.target.value as "past" | "current" | "planned",
             })
           }
         >
@@ -207,43 +202,27 @@ export function MemoryInspector() {
           event.target.value = "";
         }}
       />
-      <button
-        className="memory-primary"
-        onClick={() => inputRef.current?.click()}
-      >
+      <button className="memory-primary" onClick={() => inputRef.current?.click()}>
         사진 추가
       </button>
       <div className="memory-photo-grid">
         {pin.assetIds.map((assetId) => {
           const asset = assets.find((item) => item.id === assetId);
           const thumbnail = assets.find(
-            (item) =>
-              item.kind === "thumbnail" && item.parentAssetId === assetId
+            (item) => item.kind === "thumbnail" && item.parentAssetId === assetId
           );
           const url = objectUrls[assetId];
-          const previewUrl = thumbnail
-            ? objectUrls[thumbnail.id] ?? url
-            : url;
+          const previewUrl = thumbnail ? (objectUrls[thumbnail.id] ?? url) : url;
           return (
             <figure key={assetId}>
               {previewUrl ? (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="원본 사진 보기"
-                >
-                  <img
-                    src={previewUrl}
-                    alt={asset?.fileName ?? "공간 기록 사진"}
-                  />
+                <a href={url} target="_blank" rel="noreferrer" title="원본 사진 보기">
+                  <img src={previewUrl} alt={asset?.fileName ?? "공간 기록 사진"} />
                 </a>
               ) : (
                 <div className="memory-photo-placeholder">사진 로딩 중</div>
               )}
-              <figcaption title={asset?.fileName}>
-                {asset?.fileName ?? "사진"}
-              </figcaption>
+              <figcaption title={asset?.fileName}>{asset?.fileName ?? "사진"}</figcaption>
               <button
                 aria-label={`${asset?.fileName ?? "사진"} 연결 해제`}
                 onClick={() => void handleRemovePhoto(assetId)}
@@ -255,7 +234,7 @@ export function MemoryInspector() {
         })}
       </div>
       <button onClick={savePinViewpoint}>이 위치를 3D 시점으로 저장</button>
-      <button className="memory-danger" onClick={() => removePin(pin.id)}>
+      <button className="memory-danger" onClick={() => void handleRemovePin()}>
         기록 삭제
       </button>
     </div>

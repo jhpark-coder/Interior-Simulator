@@ -1,12 +1,20 @@
 import { useEffect } from "react";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import { createProjectPackage } from "../store/persistence/projectPackage";
+import { loadProjectAsset, saveProject } from "../store/persistence/projectDb";
+
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
 
 export function useKeyboardShortcuts() {
   const selectedEntity = useSimulatorStore((state) => state.selectedEntity);
   const removeFurniture = useSimulatorStore((state) => state.removeFurniture);
   const undo = useSimulatorStore((state) => state.undo);
   const redo = useSimulatorStore((state) => state.redo);
-  const exportLayout = useSimulatorStore((state) => state.exportLayout);
+  const snapshotProject = useSimulatorStore((state) => state.snapshotProject);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -34,23 +42,33 @@ export function useKeyboardShortcuts() {
         redo();
       }
 
-      // Ctrl/Cmd + S - Save (export JSON)
+      // Ctrl/Cmd + S - Save a complete project package
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        const layout = exportLayout();
-        const blob = new Blob([JSON.stringify(layout, null, 2)], {
-          type: "application/json",
+        void (async () => {
+          const project = snapshotProject();
+          await saveProject(project);
+          const bytes = await createProjectPackage(project, (assetId) =>
+            loadProjectAsset(project.id, assetId)
+          );
+          const blob = new Blob([bytesToArrayBuffer(bytes)], {
+            type: "application/x-interior-project",
+          });
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement("a");
+          anchor.href = url;
+          anchor.download = `${project.name.replace(/[<>:"/\\|?*]/g, "_")}.interior-project`;
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        })().catch((error) => {
+          window.alert(error instanceof Error ? error.message : "프로젝트를 저장하지 못했습니다.");
         });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `layout-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedEntity, removeFurniture, undo, redo, exportLayout]);
+  }, [selectedEntity, removeFurniture, undo, redo, snapshotProject]);
 }

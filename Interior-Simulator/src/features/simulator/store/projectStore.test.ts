@@ -113,6 +113,23 @@ describe("projectSlice", () => {
     expect(state().scenarios).toHaveLength(1);
   });
 
+  it("restores the remaining scenario structure when deleting the active scenario", () => {
+    state().removeWall("rect-east");
+    const changedRevisionId = state().createStructureRevision("동쪽 벽 제거");
+    const baseScenarioId = state().createScenario("기본 구조 배치");
+    state().restoreStructureRevision("revision-1");
+
+    state().switchScenario("scenario-1");
+    expect(state().activeStructureRevisionId).toBe(changedRevisionId);
+    expect(state().structure.walls).toHaveLength(3);
+
+    state().deleteScenario("scenario-1");
+
+    expect(state().activeScenarioId).toBe(baseScenarioId);
+    expect(state().activeStructureRevisionId).toBe("revision-1");
+    expect(state().structure.walls).toHaveLength(4);
+  });
+
   it("creates a schema-valid project snapshot", () => {
     state().addFurniture("table");
     const project = state().snapshotProject();
@@ -136,11 +153,7 @@ describe("projectSlice", () => {
   it("round trips memory pins and saved viewpoints", () => {
     const pinId = state().addMemoryPin({ x: 1000, y: 1000 });
     state().updateMemoryPin(pinId, { note: "창가 사진" });
-    state().addSavedViewpoint(
-      "창가",
-      { x: 1000, y: 1600, z: 1000 },
-      { x: 2000, y: 1400, z: 1000 }
-    );
+    state().addSavedViewpoint("창가", { x: 1000, y: 1600, z: 1000 }, { x: 2000, y: 1400, z: 1000 });
     const project = state().snapshotProject();
 
     useSimulatorStore.setState({ memoryPins: [], savedViewpoints: [] });
