@@ -2,7 +2,6 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { PalettePanel } from "./components/PalettePanel";
-import { Toolbar } from "./components/Toolbar";
 import { StructureCanvas } from "./editor2d/StructureCanvas";
 import { ScenarioCanvas } from "./editor2d/ScenarioCanvas";
 import { StructureToolPanel } from "./components/structure/StructureToolPanel";
@@ -108,7 +107,6 @@ export function SimulatorPage() {
         </div>
       </header>
       <ProjectToolbar />
-      {workspaceMode === "scenario" && <Toolbar />}
       <div className="sim-body" data-view={viewMode}>
         <aside className="sim-panel sim-left">
           {workspaceMode === "scenario" ? (

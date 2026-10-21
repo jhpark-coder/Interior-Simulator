@@ -51,3 +51,11 @@
   font: inherit;
   font-weight: 700;
 }
+
+.structure-canvas-status .snap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
