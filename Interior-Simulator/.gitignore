@@ -37,3 +37,6 @@ Thumbs.db
 !docs/FLOORPLAN_TO_3D_DEVELOPMENT_PLAN.md
 !docs/IMPLEMENTATION_STATUS.md
 !docs/DETECTION_EVALUATION.md
+
+# Local floor plan samples (not redistributable)
+.local-samples/
