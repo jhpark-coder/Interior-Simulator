@@ -5,6 +5,8 @@ import {
   createLShapedStructureFixture,
   createRectangularStructureFixture,
   createThreeRoomStructureFixture,
+  polygonArea,
+  polygonCentroid,
 } from "../domain/structure";
 
 function resetStore() {
@@ -91,6 +93,75 @@ describe("furnitureSlice", () => {
     expect(gs().pendingFurniture).not.toBeNull();
     gs().commitPendingFurniture();
     expect(gs().pendingFurniture).toBeNull();
+    expect(gs().furniture).toHaveLength(1);
+  });
+
+  it("setPendingFurniture places the draft inside a room even when extra walls stretch the bounds", () => {
+    // ScenarioCanvas는 room을 구조 bounds 끝까지 늘린다. 방 바깥의 벽 하나로
+    // bounds 중앙이 실제 방 밖으로 밀려도 추가 대기 위치는 방 안이어야 한다.
+    gs().addWall({ x: 2800, y: 11900 }, { x: 11800, y: 11900 });
+    gs().setRoom({ width: 11800, height: 11900 });
+
+    gs().setPendingFurniture("bed", { name: "퀸 침대", width: 1500, depth: 2000 });
+    const pending = gs().pendingFurniture!;
+    const [room] = gs().structure.rooms;
+    const xs = room.polygon.map((point) => point.x);
+    const ys = room.polygon.map((point) => point.y);
+    expect(pending.x).toBeGreaterThanOrEqual(Math.min(...xs));
+    expect(pending.y).toBeGreaterThanOrEqual(Math.min(...ys));
+    expect(pending.x + pending.width).toBeLessThanOrEqual(Math.max(...xs));
+    expect(pending.y + pending.depth).toBeLessThanOrEqual(Math.max(...ys));
+
+    gs().commitPendingFurniture();
+    expect(gs().validationErrors).toEqual([]);
+    expect(gs().furniture).toHaveLength(1);
+  });
+
+  it("updatePendingFurniture clears a stale placement error after moving the draft", () => {
+    gs().setPendingFurniture("table", { width: 800, depth: 600 });
+    gs().updatePendingFurniture({ x: 6000, y: 6000 });
+    gs().commitPendingFurniture();
+    expect(gs().validationErrors[0]).toContain("구조 바깥");
+
+    gs().updatePendingFurniture({ x: 300, y: 300 });
+    expect(gs().validationErrors).toEqual([]);
+    gs().commitPendingFurniture();
+    expect(gs().furniture).toHaveLength(1);
+  });
+
+  it("setPendingFurniture centers the draft in the largest room", () => {
+    gs().setStructure(createThreeRoomStructureFixture(), false);
+    const largest = [...gs().structure.rooms].sort(
+      (a, b) => polygonArea(b.polygon) - polygonArea(a.polygon)
+    )[0];
+    const center = polygonCentroid(largest.polygon);
+
+    gs().setPendingFurniture("table", { width: 800, depth: 600 });
+    const pending = gs().pendingFurniture!;
+    expect(pending.x + pending.width / 2).toBeCloseTo(center.x);
+    expect(pending.y + pending.depth / 2).toBeCloseTo(center.y);
+  });
+
+  it("setPendingFurniture keeps a thin L-shaped room's draft out of the empty notch", () => {
+    // 팔이 얇은 L자 방은 무게중심이 빈 모서리 쪽에 떨어진다.
+    gs().clearStructure();
+    const corners = [
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 1500 },
+      { x: 1500, y: 1500 },
+      { x: 1500, y: 6000 },
+      { x: 0, y: 6000 },
+    ];
+    corners.forEach((corner, index) =>
+      gs().addWall(corner, corners[(index + 1) % corners.length])
+    );
+    gs().setRoom({ width: 6000, height: 6000 });
+    expect(gs().structure.rooms).toHaveLength(1);
+
+    gs().setPendingFurniture("table", { width: 800, depth: 600 });
+    gs().commitPendingFurniture();
+    expect(gs().validationErrors).toEqual([]);
     expect(gs().furniture).toHaveLength(1);
   });
 
