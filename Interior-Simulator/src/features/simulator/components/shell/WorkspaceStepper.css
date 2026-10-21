@@ -1,0 +1,49 @@
+.workspace-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: #f8fafc;
+}
+
+.workspace-stepper-arrow {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.workspace-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 14px 7px 7px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.workspace-step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+.workspace-step.active {
+  background: #ffffff;
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.workspace-step.active .workspace-step-number {
+  background: var(--accent);
+  color: #ffffff;
+}

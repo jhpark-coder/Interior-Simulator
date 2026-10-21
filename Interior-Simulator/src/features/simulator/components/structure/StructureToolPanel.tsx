@@ -227,27 +227,13 @@ export function StructureToolPanel() {
         <p className="panel-kicker">Floor plan workspace</p>
         <h2 className="panel-title">집 구조 만들기</h2>
         <p className="panel-subtitle">
-          평면도를 겹쳐 놓고 벽·문·창문을 보정합니다.
+          평면도를 불러와 축척을 맞추고 벽·문·창문을 그립니다.
         </p>
-      </div>
-
-      <div className="structure-tool-grid" aria-label="구조 편집 도구">
-        {TOOLS.map((item) => (
-          <button
-            key={item.id}
-            className={tool === item.id ? "structure-tool active" : "structure-tool"}
-            onClick={() => setTool(item.id)}
-            title={item.label}
-          >
-            <span>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
       </div>
 
       <section className="structure-section">
         <div className="structure-section-heading">
-          <strong>원본 평면도</strong>
+          <strong>① 평면도 불러오기</strong>
           <button className="structure-link-button" onClick={() => inputRef.current?.click()}>
             불러오기
           </button>
@@ -337,64 +323,6 @@ export function StructureToolPanel() {
                 {activeSource.locked ? "잠금 해제" : "잠금"}
               </button>
             </div>
-            <div className="floorplan-scale-state">
-              {activeSource.transform.scaleMmPerPixel
-                ? `축척: ${activeSource.transform.scaleMmPerPixel.toFixed(3)} mm/px`
-                : "축척 미설정 — 축척 도구로 치수선 두 점을 지정하세요."}
-            </div>
-            <div className="structure-inline-actions">
-              <button onClick={() => setTool("calibrate")}>축척 다시 측정</button>
-              <button onClick={() => clearCalibration(activeSource.id)}>
-                축척 초기화
-              </button>
-            </div>
-            <div className="detection-launch">
-              <label>
-                인식 임계값
-                <input
-                  type="number"
-                  min={0}
-                  max={255}
-                  placeholder="자동"
-                  value={activeSource.adjustments.threshold ?? ""}
-                  onChange={(event) =>
-                    updateSource(activeSource.id, {
-                      adjustments: {
-                        ...activeSource.adjustments,
-                        threshold:
-                          event.target.value === ""
-                            ? null
-                            : Number(event.target.value),
-                      },
-                    })
-                  }
-                />
-              </label>
-              <label className="detection-checkbox">
-                <input
-                  type="checkbox"
-                  checked={useOcr}
-                  onChange={(event) => setUseOcr(event.target.checked)}
-                />
-                방 이름·치수 OCR 후보도 찾기
-              </label>
-              {useOcr && (
-                <p>
-                  OCR은 브라우저에서 처리합니다. 최초 실행 시 한국어 언어
-                  데이터가 인터넷에서 내려받아지지만 평면도 이미지는
-                  전송하지 않습니다.
-                </p>
-              )}
-              <button
-                className="detection-run"
-                disabled={detectionStatus === "analyzing"}
-                onClick={() => void handleDetection()}
-              >
-                {detectionStatus === "analyzing"
-                  ? detectionProgress || "평면도 분석 중…"
-                  : "벽·문·텍스트 후보 분석"}
-              </button>
-            </div>
             <button
               className="structure-danger"
               onClick={() => {
@@ -418,17 +346,106 @@ export function StructureToolPanel() {
         )}
       </section>
 
+      {activeSource && (
+        <section className="structure-section">
+          <strong>② 축척 맞추기</strong>
+          <div className="structure-control-stack">
+            <div className="floorplan-scale-state">
+              {activeSource.transform.scaleMmPerPixel
+                ? `축척: ${activeSource.transform.scaleMmPerPixel.toFixed(3)} mm/px`
+                : "축척 미설정 — 평면도의 치수선 양 끝을 찍고 실제 길이를 입력하세요."}
+            </div>
+            <div className="structure-inline-actions">
+              <button onClick={() => setTool("calibrate")}>축척 다시 측정</button>
+              <button onClick={() => clearCalibration(activeSource.id)}>
+                축척 초기화
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="structure-section">
-        <strong>구조 시작점</strong>
+        <strong>③ 벽·문·창문 그리기</strong>
+        <div className="structure-tool-grid" aria-label="구조 편집 도구">
+          {TOOLS.map((item) => (
+            <button
+              key={item.id}
+              className={tool === item.id ? "structure-tool active" : "structure-tool"}
+              onClick={() => setTool(item.id)}
+              title={item.label}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => {
+            clearStructure();
+            setTool("wall");
+          }}
+        >
+          빈 구조에서 시작
+        </button>
+      </section>
+
+      {activeSource && (
+        <details className="structure-section structure-details">
+          <summary>자동 인식 (실험 기능)</summary>
+          <div className="detection-launch">
+            <label>
+              인식 임계값
+              <input
+                type="number"
+                min={0}
+                max={255}
+                placeholder="자동"
+                value={activeSource.adjustments.threshold ?? ""}
+                onChange={(event) =>
+                  updateSource(activeSource.id, {
+                    adjustments: {
+                      ...activeSource.adjustments,
+                      threshold:
+                        event.target.value === ""
+                          ? null
+                          : Number(event.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label className="detection-checkbox">
+              <input
+                type="checkbox"
+                checked={useOcr}
+                onChange={(event) => setUseOcr(event.target.checked)}
+              />
+              방 이름·치수 OCR 후보도 찾기
+            </label>
+            {useOcr && (
+              <p>
+                OCR은 브라우저에서 처리합니다. 최초 실행 시 한국어 언어
+                데이터가 인터넷에서 내려받아지지만 평면도 이미지는
+                전송하지 않습니다.
+              </p>
+            )}
+            <button
+              className="detection-run"
+              disabled={detectionStatus === "analyzing"}
+              onClick={() => void handleDetection()}
+            >
+              {detectionStatus === "analyzing"
+                ? detectionProgress || "평면도 분석 중…"
+                : "벽·문·텍스트 후보 분석"}
+            </button>
+          </div>
+        </details>
+      )}
+
+      <details className="structure-section structure-details">
+        <summary>샘플 구조</summary>
         <div className="structure-control-stack">
-          <button
-            onClick={() => {
-              clearStructure();
-              setTool("wall");
-            }}
-          >
-            빈 구조에서 시작
-          </button>
           <button onClick={() => setStructure(createLShapedStructureFixture())}>
             L자형 샘플 불러오기
           </button>
@@ -438,7 +455,7 @@ export function StructureToolPanel() {
             방 3개 샘플 불러오기
           </button>
         </div>
-      </section>
+      </details>
     </div>
   );
 }

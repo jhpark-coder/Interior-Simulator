@@ -4,6 +4,7 @@ import type Konva from "konva";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import { getStructureBounds } from "../scene3d/structure3dMath";
 import { FurnitureLayer } from "../components/FurnitureLayer";
+import { SnapToggle } from "../components/shell/SnapToggle";
 import { FloorPlanLayer } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
 import "./StructureCanvas.css";
@@ -145,6 +146,7 @@ export function ScenarioCanvas() {
         <span>
           {Math.round(viewport.scale * 1000)}% · 가구 {furniture.length}개
         </span>
+        <SnapToggle />
       </div>
       <Stage
         ref={stageRef}
