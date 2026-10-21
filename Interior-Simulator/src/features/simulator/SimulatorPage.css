@@ -38,32 +38,6 @@
   gap: 10px;
 }
 
-.sim-workspace-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: #f8fafc;
-}
-
-.sim-workspace-tabs button {
-  border: 0;
-  border-radius: 9px;
-  padding: 8px 12px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.sim-workspace-tabs button.active {
-  background: #ffffff;
-  color: #1d4ed8;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
-}
-
 .sim-pill {
   border: 1px solid var(--accent);
   background: var(--accent);

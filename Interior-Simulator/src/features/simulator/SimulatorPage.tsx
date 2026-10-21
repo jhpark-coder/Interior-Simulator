@@ -16,6 +16,8 @@ import { useSimulatorStore } from "./store/useSimulatorStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { ErrorBoundary } from "../../shared/ui/ErrorBoundary";
+import { WorkspaceStepper } from "./components/shell/WorkspaceStepper";
+import { getWorkspaceTitle } from "./components/shell/workspaceFlow";
 
 function SceneLoading() {
   return <div className="sim-scene-loading">3D 공간을 준비하고 있습니다…</div>;
@@ -47,9 +49,6 @@ export function SimulatorPage() {
   const viewMode = useSimulatorStore((state) => state.viewMode);
   const setViewMode = useSimulatorStore((state) => state.setViewMode);
   const workspaceMode = useSimulatorStore((state) => state.workspaceMode);
-  const setWorkspaceMode = useSimulatorStore(
-    (state) => state.setWorkspaceMode
-  );
 
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
@@ -71,12 +70,7 @@ export function SimulatorPage() {
       showScenarioMaterials={workspaceMode !== "structure"}
     />
   );
-  const workspaceTitle =
-    workspaceMode === "structure"
-      ? "평면도에서 집 구조 만들기"
-      : workspaceMode === "scenario"
-        ? "가구 배치와 인테리어 시뮬레이션"
-        : "공간의 사진과 기억 기록하기";
+  const workspaceTitle = getWorkspaceTitle(workspaceMode, viewMode);
 
   return (
     <div className="sim-root">
@@ -85,26 +79,7 @@ export function SimulatorPage() {
           <p className="sim-kicker">Interior Simulator</p>
           <h1 className="sim-title">{workspaceTitle}</h1>
         </div>
-        <div className="sim-workspace-tabs" aria-label="작업 공간">
-          <button
-            className={workspaceMode === "structure" ? "active" : ""}
-            onClick={() => setWorkspaceMode("structure")}
-          >
-            1. 구조
-          </button>
-          <button
-            className={workspaceMode === "scenario" ? "active" : ""}
-            onClick={() => setWorkspaceMode("scenario")}
-          >
-            2. 시뮬레이션
-          </button>
-          <button
-            className={workspaceMode === "memory" ? "active" : ""}
-            onClick={() => setWorkspaceMode("memory")}
-          >
-            3. 공간 기록
-          </button>
-        </div>
+        <WorkspaceStepper />
         <div className="sim-header-actions">
           <button
             className={
