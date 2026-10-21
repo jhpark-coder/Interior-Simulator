@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
 import { createProjectPackage, readProjectPackage } from "../../store/persistence/projectPackage";
 import {
@@ -9,6 +9,7 @@ import {
   saveProjectAsset,
 } from "../../store/persistence/projectDb";
 import { saveActiveProjectBeforeTransition } from "../../store/persistence/projectTransition";
+import { MoreMenu } from "../shell/MoreMenu";
 import "./ProjectToolbar.css";
 
 function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -31,7 +32,6 @@ function projectOptionLabel(project: { name: string; updatedAt: string }): strin
 }
 
 export function ProjectToolbar() {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [savedProjects, setSavedProjects] = useState<
     Array<{ id: string; name: string; updatedAt: string }>
   >([]);
@@ -42,15 +42,11 @@ export function ProjectToolbar() {
   const createNewProject = useSimulatorStore((state) => state.createNewProject);
   const scenarios = useSimulatorStore((state) => state.scenarios);
   const activeScenarioId = useSimulatorStore((state) => state.activeScenarioId);
+  const workspaceMode = useSimulatorStore((state) => state.workspaceMode);
   const switchScenario = useSimulatorStore((state) => state.switchScenario);
   const createScenario = useSimulatorStore((state) => state.createScenario);
   const duplicateScenario = useSimulatorStore((state) => state.duplicateScenario);
   const deleteScenario = useSimulatorStore((state) => state.deleteScenario);
-  const revisions = useSimulatorStore((state) => state.structureRevisions);
-  const activeRevisionId = useSimulatorStore((state) => state.activeStructureRevisionId);
-  const restoreRevision = useSimulatorStore((state) => state.restoreStructureRevision);
-  const renameStructureRevision = useSimulatorStore((state) => state.renameStructureRevision);
-  const createRevision = useSimulatorStore((state) => state.createStructureRevision);
   const snapshotProject = useSimulatorStore((state) => state.snapshotProject);
   const importProject = useSimulatorStore((state) => state.importProject);
   const setObjectUrl = useSimulatorStore((state) => state.setFloorPlanObjectUrl);
@@ -179,83 +175,45 @@ export function ProjectToolbar() {
       </select>
       <button onClick={() => void handleCreateProject()}>새 프로젝트</button>
 
-      <div className="project-toolbar-group">
-        <span>배치안</span>
-        <select
-          aria-label="활성 배치안"
-          value={activeScenarioId}
-          onChange={(event) => switchScenario(event.target.value)}
-        >
-          {scenarios.map((scenario) => (
-            <option key={scenario.id} value={scenario.id}>
-              {scenario.name}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={() =>
-            createScenario(window.prompt("새 배치안 이름", `배치안 ${scenarios.length + 1}`) ?? "")
-          }
-        >
-          새 배치
-        </button>
-        <button onClick={() => duplicateScenario(activeScenarioId)}>복제</button>
-        <button disabled={scenarios.length <= 1} onClick={() => deleteScenario(activeScenarioId)}>
-          삭제
-        </button>
-      </div>
-
-      <div className="project-toolbar-group">
-        <span>구조</span>
-        <select
-          aria-label="활성 구조 리비전"
-          value={activeRevisionId}
-          onChange={(event) => restoreRevision(event.target.value)}
-        >
-          {revisions.map((revision) => (
-            <option key={revision.id} value={revision.id}>
-              {revision.name}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={() =>
-            createRevision(
-              window.prompt("현재 구조를 저장할 이름", `구조 ${revisions.length + 1}`) ?? ""
-            )
-          }
-        >
-          현재 구조 저장
-        </button>
-        <button
-          onClick={() => {
-            const current = revisions.find((revision) => revision.id === activeRevisionId);
-            if (!current) return;
-            const name = window.prompt("구조 리비전 이름", current.name);
-            if (name !== null) renameStructureRevision(current.id, name);
-          }}
-        >
-          이름 변경
-        </button>
-      </div>
+      {workspaceMode === "scenario" && (
+        <div className="project-toolbar-group">
+          <span>배치안</span>
+          <select
+            aria-label="활성 배치안"
+            value={activeScenarioId}
+            onChange={(event) => switchScenario(event.target.value)}
+          >
+            {scenarios.map((scenario) => (
+              <option key={scenario.id} value={scenario.id}>
+                {scenario.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() =>
+              createScenario(
+                window.prompt("새 배치안 이름", `배치안 ${scenarios.length + 1}`) ?? ""
+              )
+            }
+          >
+            새 배치
+          </button>
+          <button onClick={() => duplicateScenario(activeScenarioId)}>복제</button>
+          <button disabled={scenarios.length <= 1} onClick={() => deleteScenario(activeScenarioId)}>
+            삭제
+          </button>
+        </div>
+      )}
 
       <div className="project-toolbar-spacer" />
       <span className="project-save-state" title={`프로젝트 ID: ${projectId}`}>
         {status}
       </span>
-      <input
-        ref={inputRef}
-        hidden
-        type="file"
-        accept=".interior-project"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleImport(file);
-          event.target.value = "";
-        }}
+      <MoreMenu
+        onExportPackage={() => void handleExport()}
+        onImportPackage={(file) => void handleImport(file)}
+        onStatus={setStatus}
       />
-      <button onClick={() => inputRef.current?.click()}>프로젝트 열기</button>
-      <button onClick={() => void handleExport()}>프로젝트 내보내기</button>
     </div>
   );
 }
