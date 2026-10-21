@@ -14,6 +14,7 @@ import {
   snapToParentEdge,
   inferCategoryFromType,
   validateFurnitureInStructure,
+  defaultFurnitureCenter,
 } from "../../utils";
 import { createId } from "../createId";
 import { pushSnapshotFromState } from "./historySlice";
@@ -41,14 +42,24 @@ function placementError(
     : FURNITURE_OUTSIDE_STRUCTURE_ERROR;
 }
 
+function defaultCenter(
+  structure: SimulatorState["structure"],
+  room: Room
+) {
+  return defaultFurnitureCenter(structure, {
+    x: room.width / 2,
+    y: room.height / 2,
+  });
+}
+
 function createFurnitureItem(
   type: FurnitureType,
-  room: Room,
+  center: { x: number; y: number },
   overrides: Partial<FurnitureItem> = {}
 ): FurnitureItem {
   const template = FURNITURE_CATALOG[type];
-  const baseX = room.width / 2 - template.width / 2;
-  const baseY = room.height / 2 - template.depth / 2;
+  const baseX = center.x - template.width / 2;
+  const baseY = center.y - template.depth / 2;
   const category = inferCategoryFromType(type);
   return {
     id: createId(),
@@ -100,13 +111,14 @@ export const createFurnitureSlice: StateCreator<
   placingFurniture: null,
 
   setPendingFurniture: (type, preset) => {
-    const { room } = get();
+    const { room, structure } = get();
     const template = FURNITURE_CATALOG[type];
     const width = preset?.width ?? template.width;
     const depth = preset?.depth ?? template.depth;
     const height = preset?.height ?? template.height;
-    const baseX = room.width / 2 - width / 2;
-    const baseY = room.height / 2 - depth / 2;
+    const center = defaultCenter(structure, room);
+    const baseX = center.x - width / 2;
+    const baseY = center.y - depth / 2;
     const category = preset?.category ?? inferCategoryFromType(type);
 
     set({
@@ -137,6 +149,9 @@ export const createFurnitureSlice: StateCreator<
       pendingFurniture: state.pendingFurniture
         ? { ...state.pendingFurniture, ...patch }
         : null,
+      // 이전 위치에서 난 배치 오류가 새 위치에 남아 보이지 않게 한다.
+      validationErrors:
+        state.validationErrors.length > 0 ? [] : state.validationErrors,
     })),
 
   commitPendingFurniture: () => {
@@ -321,7 +336,12 @@ export const createFurnitureSlice: StateCreator<
     }),
 
   addFurniture: (type, overrides) => {
-    const item = createFurnitureItem(type, get().room, overrides);
+    const { room, structure } = get();
+    const item = createFurnitureItem(
+      type,
+      defaultCenter(structure, room),
+      overrides
+    );
     const { past, future } = pushSnapshotFromState(get);
     set((state) => ({
       furniture: [...state.furniture, item],
