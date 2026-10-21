@@ -360,3 +360,13 @@
   display: grid;
   gap: 6px;
 }
+
+.structure-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #475569;
+}
+
+.structure-details[open] > summary {
+  margin-bottom: 8px;
+}
