@@ -25,13 +25,21 @@ Tesseract.js, Vitest, Testing Library.
 
 ## Product Workspaces
 
-`SimulatorPage.tsx`는 하나의 Project v2 상태를 세 작업 공간으로 보여준다.
+`SimulatorPage.tsx`는 하나의 Project v2 상태를 보여준다. 내부 `workspaceMode`는
+세 가지다.
 
 - `structure`: 평면도 오버레이, 축척, 벽·문·창문, 반자동 후보 검토
 - `scenario`: 가구·재질 배치안과 구조 리비전 비교
 - `memory`: 위치 핀, 사진·메모·촬영 방향, 저장 시점
 
-각 작업 공간은 2D, 3D, split 뷰를 공유한다. 3D는
+UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
+
+- 집 구조 = `structure`
+- 가구 배치 = `scenario` + 2D/split
+- 구경하기 = `scenario` + 3D
+
+`memory`, 백업 패키지, 구조 리비전, 호환 JSON은 `components/shell/MoreMenu.tsx`의
+`더보기` 메뉴에서 연다. 각 작업 공간은 2D, 3D, split 뷰를 공유한다. 3D는
 `scene3d/StructureScene3D.tsx`를 지연 로드한다.
 
 ## Architecture
@@ -65,8 +73,8 @@ Tesseract.js, Vitest, Testing Library.
 - 구형 호환: LayoutDoc v1.1/v1.2를 `migrations/layoutV1ToProjectV2.ts`로 변환
 - 자동 저장: 5초 간격이며 프로젝트 전환 전에도 현재 스냅샷을 저장
 
-`Ctrl/Cmd + S`와 프로젝트 툴바의 내보내기는 전체 프로젝트 패키지를 사용한다.
-시뮬레이션 툴바의 JSON은 구형 호환용이며 전체 백업이 아니다.
+`Ctrl/Cmd + S`와 `더보기 → 백업 파일로 내보내기`는 전체 프로젝트 패키지를 사용한다.
+`더보기 → 호환 JSON`은 구형 호환용이며 전체 백업이 아니다.
 
 ### Rendering
 
