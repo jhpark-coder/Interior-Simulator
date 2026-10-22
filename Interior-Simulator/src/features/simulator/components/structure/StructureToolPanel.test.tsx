@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
 
 vi.mock("../../floorplan/pdf", () => ({ renderPdfFloorPlanPage: vi.fn() }));
@@ -57,5 +57,15 @@ describe("StructureToolPanel", () => {
     render(<StructureToolPanel />);
     expect(screen.getByRole("button", { name: "L자형 샘플 불러오기" })).not.toBeVisible();
     expect(screen.getByText("샘플 구조").closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("loads the 84㎡ apartment sample from the sample section", () => {
+    render(<StructureToolPanel />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "84㎡ 방 3개 아파트 샘플 불러오기", hidden: true })
+    );
+    const structure = useSimulatorStore.getState().structure;
+    expect(structure.name).toBe("84㎡ 방 3개 아파트");
+    expect(structure.rooms).toHaveLength(10);
   });
 });

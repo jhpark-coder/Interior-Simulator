@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  createApartment84StructureFixture,
   createLShapedStructureFixture,
   createThreeRoomStructureFixture,
 } from "../../domain/structure";
@@ -446,6 +447,9 @@ export function StructureToolPanel() {
       <details className="structure-section structure-details">
         <summary>샘플 구조</summary>
         <div className="structure-control-stack">
+          <button onClick={() => setStructure(createApartment84StructureFixture())}>
+            84㎡ 방 3개 아파트 샘플 불러오기
+          </button>
           <button onClick={() => setStructure(createLShapedStructureFixture())}>
             L자형 샘플 불러오기
           </button>
