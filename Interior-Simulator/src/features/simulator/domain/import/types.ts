@@ -23,6 +23,14 @@ export type FloorPlanAdjustments = {
   grayscale: boolean;
 };
 
+/** 원본 이미지 픽셀 좌표의 표시·인식 영역. 원본 파일과 축척 기준점은 바꾸지 않는다. */
+export type FloorPlanCrop = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type FloorPlanSource = {
   id: string;
   fileName: string;
@@ -37,6 +45,7 @@ export type FloorPlanSource = {
   locked: boolean;
   transform: FloorPlanTransform;
   adjustments: FloorPlanAdjustments;
+  crop?: FloorPlanCrop;
   calibrationAnchors: CalibrationAnchor[];
 };
 

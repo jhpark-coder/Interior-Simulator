@@ -99,7 +99,7 @@ test("평면도 밝기·대비·흑백 보정을 저장하고 다시 연다", as
   await contrast.fill("-0.25");
   await page.getByLabel("흑백").check();
   await expect(page.locator("label", { hasText: /^밝기/ })).toContainText("밝기 30");
-  await expect(page.getByText("자동 인식은 원본 이미지를 씁니다.")).toBeVisible();
+  await expect(page.getByText("자동 인식은 보정 전 이미지를 씁니다.")).toBeVisible();
 
   type Adjusted = {
     sources: Array<{ adjustments: { brightness: number; contrast: number; grayscale: boolean } }>;

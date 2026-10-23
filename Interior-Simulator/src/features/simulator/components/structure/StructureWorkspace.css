@@ -85,6 +85,12 @@
   gap: 8px;
 }
 
+.structure-inline-actions button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .structure-inline-actions > * {
   flex: 1;
 }
@@ -147,6 +153,7 @@
 }
 
 .floorplan-scale-state,
+.floorplan-crop-state,
 .structure-readonly,
 .structure-empty-selection,
 .structure-ok {

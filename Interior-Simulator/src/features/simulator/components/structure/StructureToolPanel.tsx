@@ -187,9 +187,11 @@ export function StructureToolPanel() {
     beginDetection();
     setDetectionProgress("벽 선분을 찾는 중");
     try {
-      let result = await analyzeFloorPlanImage(objectUrl, {
-        threshold: activeSource.adjustments.threshold,
-      });
+      let result = await analyzeFloorPlanImage(
+        objectUrl,
+        { threshold: activeSource.adjustments.threshold },
+        activeSource.crop
+      );
       if (useOcr) {
         setDetectionProgress("OCR 언어 모델 준비 중");
         const labels = await recognizeFloorPlanLabels(
@@ -197,7 +199,8 @@ export function StructureToolPanel() {
           (progress, status) =>
             setDetectionProgress(
               `${status} ${Math.round(progress * 100)}%`
-            )
+            ),
+          activeSource.crop
         );
         result = { ...result, labels };
       }
@@ -358,7 +361,32 @@ export function StructureToolPanel() {
               </button>
             </div>
             <p className="floorplan-adjust-note">
-              밝기·대비·흑백은 화면 표시용입니다. 자동 인식은 원본 이미지를 씁니다.
+              밝기·대비·흑백은 화면 표시용입니다. 자동 인식은 보정 전 이미지를 씁니다.
+            </p>
+            <div className="floorplan-crop-state" aria-live="polite">
+              {activeSource.crop
+                ? `자르기: ${activeSource.crop.width}×${activeSource.crop.height}px 영역 사용`
+                : "자르기: 이미지 전체 사용"}
+            </div>
+            <div className="structure-inline-actions">
+              <button
+                className={tool === "crop" ? "active" : undefined}
+                aria-pressed={tool === "crop"}
+                disabled={!activeSource.visible}
+                onClick={() => setTool(tool === "crop" ? "select" : "crop")}
+              >
+                {tool === "crop" ? "자르기 취소" : "영역 자르기"}
+              </button>
+              <button
+                disabled={!activeSource.crop}
+                onClick={() => updateSource(activeSource.id, { crop: undefined })}
+              >
+                자르기 해제
+              </button>
+            </div>
+            <p className="floorplan-adjust-note">
+              자르기는 원본을 지우지 않고 보이는 영역만 정합니다. 표제란·범례를 빼 두면 자동
+              인식도 이 영역만 분석합니다.
             </p>
             <label>
               회전

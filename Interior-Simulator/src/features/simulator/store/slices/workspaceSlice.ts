@@ -10,6 +10,7 @@ export type StructureTool =
   | "window"
   | "passage"
   | "calibrate"
+  | "crop"
   | "memory-pin";
 
 export type WorkspaceSliceState = {
