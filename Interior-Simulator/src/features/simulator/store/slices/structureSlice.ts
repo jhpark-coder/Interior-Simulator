@@ -7,6 +7,11 @@ import {
   splitWallAtPoint,
   validateStructure,
   MIN_WALL_LENGTH,
+  OPENING_ANGLE_RANGE,
+  OPENING_MIN_SIZE,
+  WALL_HEIGHT_RANGE,
+  WALL_THICKNESS_RANGE,
+  clampToRange,
   wallDirection,
   wallLength,
 } from "../../domain/structure";
@@ -67,6 +72,41 @@ export type StructureSliceState = {
 };
 
 const STRUCTURE_HISTORY_LIMIT = 50;
+
+type NumericRange = { min: number; max: number };
+
+/**
+ * patch의 수치를 스키마 범위로 맞춘다. 숫자가 아니면 그 값은 바꾸지 않는다.
+ * 범위를 벗어난 값이 저장되면 다음에 열 때 검증에 실패해 프로젝트가 복원되지 않는다.
+ */
+function withinRanges<T extends object>(patch: T, ranges: Partial<Record<keyof T, NumericRange>>): T {
+  const next = { ...patch };
+  for (const key of Object.keys(ranges) as Array<keyof T>) {
+    const value = next[key];
+    if (value === undefined) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      delete next[key];
+      continue;
+    }
+    next[key] = clampToRange(value, ranges[key]!) as T[keyof T];
+  }
+  return next;
+}
+
+function withinWallRanges(patch: Partial<Omit<Wall, "id">>) {
+  return withinRanges(patch, { thickness: WALL_THICKNESS_RANGE, height: WALL_HEIGHT_RANGE });
+}
+
+function withinOpeningRanges(patch: Partial<Omit<Opening, "id">>) {
+  const unbounded = Number.POSITIVE_INFINITY;
+  return withinRanges(patch, {
+    offset: { min: 0, max: unbounded },
+    width: { min: OPENING_MIN_SIZE, max: unbounded },
+    height: { min: OPENING_MIN_SIZE, max: unbounded },
+    sillHeight: { min: 0, max: unbounded },
+    openAngle: OPENING_ANGLE_RANGE,
+  });
+}
 
 function cloneStructure(structure: FloorStructure): FloorStructure {
   return structuredClone(structure);
@@ -192,9 +232,10 @@ export const createStructureSlice: StateCreator<
     return id;
   },
 
-  updateWall: (id, patch) => {
+  updateWall: (id, rawPatch) => {
     const state = get();
     if (!state.structure.walls.some((wall) => wall.id === id)) return;
+    const patch = withinWallRanges(rawPatch);
     const structure = withRebuiltRooms({
       ...state.structure,
       walls: state.structure.walls.map((wall) =>
@@ -371,9 +412,10 @@ export const createStructureSlice: StateCreator<
     return id;
   },
 
-  updateStructureOpening: (id, patch) => {
+  updateStructureOpening: (id, rawPatch) => {
     const state = get();
     if (!state.structure.openings.some((opening) => opening.id === id)) return;
+    const patch = withinOpeningRanges(rawPatch);
     const structure = {
       ...state.structure,
       openings: state.structure.openings.map((opening) =>

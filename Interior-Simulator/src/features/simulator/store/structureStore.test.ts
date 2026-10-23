@@ -78,6 +78,33 @@ describe("structureSlice", () => {
     expect(state().structurePast).toHaveLength(0);
   });
 
+  it("keeps wall and opening values inside the project schema ranges", () => {
+    state().updateWall("rect-north", { thickness: 0, height: 50 });
+    let wall = state().structure.walls.find((item) => item.id === "rect-north")!;
+    expect(wall.thickness).toBe(20);
+    expect(wall.height).toBe(100);
+
+    state().updateWall("rect-north", { thickness: Number.NaN, height: 999999 });
+    wall = state().structure.walls.find((item) => item.id === "rect-north")!;
+    expect(wall.thickness).toBe(20);
+    expect(wall.height).toBe(20000);
+
+    const doorId = state().addStructureOpening({
+      kind: "door",
+      wallId: "rect-north",
+      offset: 1000,
+      width: 900,
+      height: 2100,
+      sillHeight: 0,
+    })!;
+    state().updateStructureOpening(doorId, { width: 0, openAngle: 250, offset: -10 });
+    expect(state().structure.openings.find((item) => item.id === doorId)).toMatchObject({
+      width: 100,
+      openAngle: 180,
+      offset: 0,
+    });
+  });
+
   it("splits a wall and moves openings to the correct new segment", () => {
     state().addStructureOpening({
       id: "window-1",

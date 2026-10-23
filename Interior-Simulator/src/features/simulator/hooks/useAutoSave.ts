@@ -5,7 +5,7 @@ import {
   loadProjectAsset,
   saveProject,
 } from "../store/persistence/projectDb";
-import { validateInteriorProject } from "../domain/project";
+import { repairProjectRanges, validateInteriorProject } from "../domain/project";
 import { migrateLegacyLayoutToProject } from "../store/migrations/layoutV1ToProjectV2";
 import { validateLayoutDoc } from "../utils/zodSchemas";
 import { inferCategoryFromType } from "../utils";
@@ -47,7 +47,7 @@ export function useAutoSave() {
         const lastProjectId = localStorage.getItem(LAST_PROJECT_KEY);
         if (lastProjectId) {
           const stored = await loadProject(lastProjectId);
-          const validation = validateInteriorProject(stored);
+          const validation = validateInteriorProject(repairProjectRanges(stored));
           if (validation.success && !cancelled) {
             const project = validation.data;
             importRef.current(project);

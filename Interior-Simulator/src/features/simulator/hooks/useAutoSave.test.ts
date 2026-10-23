@@ -146,6 +146,20 @@ describe("useAutoSave page lifecycle saves", () => {
     error.mockRestore();
   });
 
+  it("restores a last project that an older version saved with out-of-range values", async () => {
+    const broken = structuredClone(useSimulatorStore.getState().snapshotProject());
+    broken.id = "stored-broken";
+    broken.name = "두께 0 프로젝트";
+    broken.structureRevisions[0].structure.walls[0].thickness = 0;
+    localStorage.setItem("interior-simulator-last-project", broken.id);
+    db.loadProject.mockResolvedValue(broken);
+
+    renderHook(() => useAutoSave());
+    await waitFor(() => expect(useSimulatorStore.getState().projectId).toBe("stored-broken"));
+    expect(useSimulatorStore.getState().projectName).toBe("두께 0 프로젝트");
+    expect(useSimulatorStore.getState().structure.walls[0].thickness).toBe(20);
+  });
+
   it("removes its listeners on unmount", async () => {
     const { unmount } = renderHook(() => useAutoSave());
     await act(async () => undefined);

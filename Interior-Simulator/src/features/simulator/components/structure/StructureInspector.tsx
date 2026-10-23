@@ -2,6 +2,9 @@ import { useState } from "react";
 import {
   MAX_DOOR_OPEN_ANGLE,
   MIN_WALL_LENGTH,
+  OPENING_MIN_SIZE,
+  WALL_HEIGHT_RANGE,
+  WALL_THICKNESS_RANGE,
   pointAlongWall,
   resolvedDoorDetails,
   wallLength,
@@ -26,6 +29,10 @@ function NumericField({
   max?: number;
   onChange: (value: number) => void;
 }) {
+  // 입력 중인 글자. 비었거나 범위를 벗어난 값은 화면에만 두고 적용하지 않는다.
+  // 예전에는 칸을 비우면 Number("") = 0이 벽 두께로 저장되어 다음에 열 때 프로젝트가
+  // 스키마 검증에 실패했다.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <label className="structure-field">
       <span>{label}</span>
@@ -33,11 +40,21 @@ function NumericField({
         type="number"
         min={min}
         max={max}
-        value={Math.round(value * 1000) / 1000}
+        value={draft ?? String(Math.round(value * 1000) / 1000)}
         onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) onChange(next);
+          const text = event.target.value;
+          setDraft(text);
+          const next = Number(text);
+          if (
+            text.trim() !== "" &&
+            Number.isFinite(next) &&
+            (min === undefined || next >= min) &&
+            (max === undefined || next <= max)
+          ) {
+            onChange(next);
+          }
         }}
+        onBlur={() => setDraft(null)}
       />
     </label>
   );
@@ -120,13 +137,15 @@ function WallInspector({ wall }: { wall: Wall }) {
       <NumericField
         label="벽 두께 (mm)"
         value={wall.thickness}
-        min={20}
+        min={WALL_THICKNESS_RANGE.min}
+        max={WALL_THICKNESS_RANGE.max}
         onChange={(thickness) => updateWall(wall.id, { thickness })}
       />
       <NumericField
         label="벽 높이 (mm)"
         value={wall.height}
-        min={100}
+        min={WALL_HEIGHT_RANGE.min}
+        max={WALL_HEIGHT_RANGE.max}
         onChange={(height) => updateWall(wall.id, { height })}
       />
       <label className="structure-field">
@@ -224,11 +243,7 @@ function DoorDetailFields({ opening }: { opening: Opening }) {
             value={details.openAngle}
             min={0}
             max={MAX_DOOR_OPEN_ANGLE}
-            onChange={(openAngle) =>
-              update(opening.id, {
-                openAngle: Math.min(MAX_DOOR_OPEN_ANGLE, Math.max(0, openAngle)),
-              })
-            }
+            onChange={(openAngle) => update(opening.id, { openAngle })}
           />
         </>
       ) : (
@@ -261,13 +276,13 @@ function OpeningInspector({ opening }: { opening: Opening }) {
       <NumericField
         label="너비 (mm)"
         value={opening.width}
-        min={100}
+        min={OPENING_MIN_SIZE}
         onChange={(width) => update(opening.id, { width })}
       />
       <NumericField
         label="높이 (mm)"
         value={opening.height}
-        min={100}
+        min={OPENING_MIN_SIZE}
         onChange={(height) => update(opening.id, { height })}
       />
       {opening.kind === "window" && (

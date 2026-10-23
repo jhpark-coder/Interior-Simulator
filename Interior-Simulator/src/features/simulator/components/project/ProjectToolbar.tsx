@@ -10,6 +10,11 @@ import {
 } from "../../store/persistence/projectDb";
 import { saveActiveProjectBeforeTransition } from "../../store/persistence/projectTransition";
 import { MoreMenu } from "../shell/MoreMenu";
+import {
+  repairProjectRanges,
+  validateInteriorProject,
+  type InteriorProject,
+} from "../../domain/project";
 import "./ProjectToolbar.css";
 
 function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -79,11 +84,18 @@ export function ProjectToolbar() {
   const handleOpenLocalProject = async (id: string) => {
     if (!id || id === projectId) return;
     try {
-      const project = await loadProject(id);
-      if (!project) {
+      const stored = await loadProject(id);
+      if (!stored) {
         setStatus("저장된 프로젝트를 찾을 수 없습니다.");
         return;
       }
+      // 자동 복원과 같은 검증을 거친다. 검증 없이 열면 잘못된 값이 그대로 편집기에 들어온다.
+      const validation = validateInteriorProject(repairProjectRanges(stored));
+      if (!validation.success) {
+        setStatus("저장된 프로젝트 형식이 올바르지 않아 열 수 없습니다.");
+        return;
+      }
+      const project = validation.data as InteriorProject;
       setStatus("현재 프로젝트 저장 중…");
       await saveActiveProjectBeforeTransition();
       Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
