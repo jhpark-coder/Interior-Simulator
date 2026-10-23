@@ -26,6 +26,7 @@ Keep new domain logic inside `src/features/simulator/` unless it is clearly reus
 - `npm run test`: run Vitest in watch mode.
 - `npm run test:run`: run tests once (good for CI/local verification).
 - `npm run test:ui`: open Vitest UI.
+- `npm run test:e2e`: run Playwright E2E specs in `e2e/` against a production build (run `npx playwright install chromium` once first).
 
 ## Coding Style & Naming Conventions
 
@@ -43,7 +44,8 @@ Tests use Vitest + Testing Library in `jsdom` (`vitest.config.ts`).
 - Place tests near source files using `*.test.ts` naming (example: `src/features/simulator/utils/snap.test.ts`).
 - Prefer deterministic unit tests for geometry, snapping, openings, migrations, persistence,
   project/store transitions, 3D math, and history behavior.
-- Run `npm run test:run` and `npm run lint` before opening a PR.
+- Put end-to-end browser flows in `e2e/*.spec.ts` (Playwright); Vitest ignores `e2e/`.
+- Run `npm run test:run` and `npm run lint` before opening a PR, and `npm run test:e2e` when a UI flow changes.
 
 ## Commit & Pull Request Guidelines
 

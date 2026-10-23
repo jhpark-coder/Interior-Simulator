@@ -9,6 +9,7 @@
 - `npm run build` — TypeScript 체크 + Vite 프로덕션 빌드
 - `npm run test` — Vitest 워치 모드
 - `npm run test:run` — Vitest 한 번 실행
+- `npm run test:e2e` — Playwright E2E (production 빌드를 4173 포트로 띄움. 처음 한 번 `npx playwright install chromium`)
 - `npm run lint` — ESLint
 
 단일 테스트 파일 예:
@@ -21,7 +22,7 @@ npx vitest run src/features/simulator/store/projectStore.test.ts
 
 React 19, TypeScript strict mode, Vite 8, Zustand 4, react-konva 19,
 React Three Fiber 9, drei 10, Zod, IndexedDB(`idb`), JSZip, PDF.js,
-Tesseract.js, Vitest, Testing Library.
+Tesseract.js, Vitest, Testing Library, Playwright.
 
 ## Product Workspaces
 
@@ -90,7 +91,11 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 마이그레이션, 프로젝트/자산 IndexedDB, 패키지 왕복, slice 전환, 반자동 인식,
 3D 수학과 충돌, 성능 예산이다.
 
-코드 변경 후 최소 `npm run lint`, `npm run test:run`, `npm run build`를 실행한다.
+E2E는 `e2e/*.spec.ts`에 두고 Playwright로 실행한다. Vitest는 `e2e/`를 수집하지 않는다.
+캔버스 클릭 좌표와 IndexedDB 확인 헬퍼는 `e2e/helpers.ts`에 있다.
+
+코드 변경 후 최소 `npm run lint`, `npm run test:run`, `npm run build`를 실행한다. 화면 흐름을
+바꿨다면 `npm run test:e2e`도 실행한다.
 
 ## Documentation
 

@@ -59,11 +59,22 @@ npm run dev
 ```bash
 npm run lint
 npm run test:run
+npm run test:e2e
 npm run build
 npm run preview
 ```
 
 개발 중 테스트 감시는 `npm run test`, Vitest UI는 `npm run test:ui`를 사용합니다.
+
+`npm run test:e2e`는 production 빌드를 `http://localhost:4173`에 띄워 `e2e/`의
+Playwright 테스트를 실행합니다. 처음 한 번은 브라우저를 설치해야 합니다.
+
+```bash
+npx playwright install chromium
+```
+
+브라우저를 내려받을 수 없는 환경에서는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`에 설치된
+Chromium 경로를 지정합니다.
 
 ## 사용 순서
 
@@ -127,7 +138,7 @@ npm run preview
 - IndexedDB (`idb`), JSZip
 - PDF.js, Tesseract.js
 - Zod
-- Vitest, Testing Library, jsdom
+- Vitest, Testing Library, jsdom, Playwright
 
 ## 코드 구조
 
@@ -156,6 +167,7 @@ src/
 - 기본 선분 인식은 Web Worker에서 로컬 실행됩니다.
 - 선택적 OCR은 Tesseract.js 언어 데이터를 최초 실행 시 내려받지만, 평면도 이미지를
   원격 인식 서버로 전송하지 않습니다.
+- 3D 조명용 환경맵은 앱에 포함되어 있어 3D 화면은 인터넷 연결 없이 동작합니다.
 - 현재 클라우드 동기화나 공유 링크 기능은 없습니다.
 
 ## 현재 제한
@@ -163,8 +175,10 @@ src/
 - 반자동 인식은 선명한 직교형 합성 평면도와 유사한 자료를 기준으로 검증했습니다.
 - 실제 평면도 10~20개 기준 precision/recall과 84㎡급 수동 추적 시간은 미측정입니다.
 - PDF 전체를 동시에 프로젝트에 넣지 않고 사용자가 선택한 한 페이지를 렌더링합니다.
-- 브라우저 종료 직전의 비동기 IndexedDB 저장 완료는 브라우저 정책의 영향을 받습니다.
-- Playwright 기반 E2E, 모바일 사용성, PWA/데스크톱 패키징은 아직 완료되지 않았습니다.
+- 자동 저장은 5초 간격이며 창을 닫을 때 따로 저장하지 않습니다. 마지막 저장 뒤 몇 초 안의
+  편집은 창을 닫으면 잃을 수 있습니다.
+- E2E는 핵심 흐름 3개만 다룹니다. 2D/3D 시각 회귀, 모바일 사용성, PWA/데스크톱 패키징은
+  아직 완료되지 않았습니다.
 
 ## 문서
 
