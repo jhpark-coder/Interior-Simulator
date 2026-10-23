@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { validateInteriorProject } from "../domain/project";
-import { createRectangularStructureFixture } from "../domain/structure";
+import { createRectangularStructureFixture, validateStructure } from "../domain/structure";
 import { useSimulatorStore } from "./useSimulatorStore";
 
 const createdAt = "2026-08-05T00:00:00.000Z";
@@ -128,6 +128,38 @@ describe("projectSlice", () => {
     expect(state().activeScenarioId).toBe(baseScenarioId);
     expect(state().activeStructureRevisionId).toBe("revision-1");
     expect(state().structure.walls).toHaveLength(4);
+  });
+
+  it("recomputes structure issues when switching scenarios changes the structure", () => {
+    // 동쪽 벽을 지운 리비전은 열린 끝점 오류가 있고, 기본 구조는 오류가 없다.
+    state().removeWall("rect-east");
+    state().createStructureRevision("동쪽 벽 제거");
+    const baseScenarioId = state().createScenario("기본 구조 배치");
+    state().restoreStructureRevision("revision-1");
+    expect(state().structureIssues).toEqual([]);
+
+    state().switchScenario("scenario-1");
+    expect(state().structure.walls).toHaveLength(3);
+    expect(state().structureIssues.length).toBeGreaterThan(0);
+    expect(state().structureIssues).toEqual(validateStructure(state().structure));
+
+    state().switchScenario(baseScenarioId);
+    expect(state().structure.walls).toHaveLength(4);
+    expect(state().structureIssues).toEqual([]);
+  });
+
+  it("recomputes structure issues when importing a project", () => {
+    const cleanProject = state().snapshotProject();
+    state().removeWall("rect-east");
+    const brokenProject = state().snapshotProject();
+    expect(state().structureIssues.length).toBeGreaterThan(0);
+
+    state().importProject(cleanProject);
+    expect(state().structureIssues).toEqual([]);
+
+    state().importProject(brokenProject);
+    expect(state().structureIssues.length).toBeGreaterThan(0);
+    expect(state().structureIssues).toEqual(validateStructure(state().structure));
   });
 
   it("creates a schema-valid project snapshot", () => {
