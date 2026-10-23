@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { deleteProjectAssets, saveProjectAsset } from "../../store/persistence/projectDb";
 import { collectUnusedMemoryAssetIds } from "../../store/persistence/memoryAssetCleanup";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
+import { cameraDirectionVector } from "../../domain/memory";
 import "./MemoryWorkspace.css";
 
 async function createThumbnail(file: File): Promise<Blob | null> {
@@ -114,14 +115,14 @@ export function MemoryInspector() {
   };
 
   const savePinViewpoint = () => {
-    const angle = ((pin.cameraDirection ?? 0) * Math.PI) / 180;
+    const direction = cameraDirectionVector(pin.cameraDirection ?? 0);
     addViewpoint(
       pin.title,
       { x: pin.position.x, y: 1600, z: pin.position.y },
       {
-        x: pin.position.x + Math.sin(angle) * 1800,
+        x: pin.position.x + direction.x * 1800,
         y: 1150,
-        z: pin.position.y - Math.cos(angle) * 1800,
+        z: pin.position.y + direction.y * 1800,
       }
     );
   };

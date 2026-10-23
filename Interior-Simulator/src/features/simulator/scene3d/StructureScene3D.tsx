@@ -11,6 +11,7 @@ import { useFurnitureReview } from "../hooks/useFurnitureReview";
 // drei의 preset="apartment"와 같은 파일(CC0). 외부 CDN 없이 오프라인에서도 3D를 띄우기 위해 번들한다.
 import apartmentHdrUrl from "./assets/lebombo_1k.hdr?url";
 import { FurnitureMesh } from "./FurnitureMesh";
+import { MemoryPinMarkers } from "./MemoryPinMarkers";
 import { StructureMesh } from "./StructureMesh";
 import { getStructureBounds } from "./structure3dMath";
 import {
@@ -306,6 +307,7 @@ export function StructureScene3D({
         {furniture.map((item) => (
           <FurnitureMesh key={item.id} item={item} />
         ))}
+        {memoryMode && <MemoryPinMarkers />}
         <ContactShadows
           position={[bounds.centerX, 2, bounds.centerY]}
           opacity={0.18}

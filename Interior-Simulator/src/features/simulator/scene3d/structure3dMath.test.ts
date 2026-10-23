@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Euler, Vector3 } from "three";
+import { Euler, Object3D, Vector3 } from "three";
+import { cameraDirectionVector } from "../domain/memory";
 import {
   createLShapedStructureFixture,
   createRectangularStructureFixture,
@@ -12,6 +13,7 @@ import {
   buildStructureWallSegments,
   directionToRotationY,
   getOpeningMeshPlacement,
+  memoryPinConeTransform,
   getStructureBounds,
 } from "./structure3dMath";
 
@@ -125,5 +127,25 @@ describe("directionToRotationY", () => {
     const arcEnd = doorSwingArc(geometry).at(-1)!;
     expect(leafTip.x).toBeCloseTo(arcEnd.x, 6);
     expect(leafTip.z).toBeCloseTo(arcEnd.y, 6);
+  });
+});
+
+describe("memoryPinConeTransform", () => {
+  it.each([0, 90, 180, 270, 45])("points the cone tip toward the %s° photo direction", (degrees) => {
+    const direction = cameraDirectionVector(degrees);
+    const transform = memoryPinConeTransform(direction);
+    const group = new Object3D();
+    group.rotation.set(0, transform.groupRotationY, 0);
+    const cone = new Object3D();
+    cone.position.set(...transform.position);
+    cone.rotation.set(...transform.rotation);
+    group.add(cone);
+    group.updateMatrixWorld(true);
+    // ConeGeometry의 끝은 로컬 +Y 방향 height/2 지점이다.
+    const tip = cone.localToWorld(new Vector3(0, transform.length / 2, 0));
+    const reach = transform.position[0] + transform.length / 2;
+    expect(tip.x).toBeCloseTo(direction.x * reach, 6);
+    expect(tip.y).toBeCloseTo(0, 6);
+    expect(tip.z).toBeCloseTo(direction.y * reach, 6);
   });
 });
