@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useSimulatorStore } from "./useSimulatorStore";
-import { DEFAULT_ROOM } from "../constants";
+import { DEFAULT_ROOM, FURNITURE_CATALOG } from "../constants";
+import type { FurnitureType } from "../types";
 import {
+  createApartment84StructureFixture,
   createLShapedStructureFixture,
   createRectangularStructureFixture,
   createThreeRoomStructureFixture,
@@ -160,6 +162,27 @@ describe("furnitureSlice", () => {
     expect(gs().structure.rooms).toHaveLength(1);
 
     gs().setPendingFurniture("table", { width: 800, depth: 600 });
+    gs().commitPendingFurniture();
+    expect(gs().validationErrors).toEqual([]);
+    expect(gs().furniture).toHaveLength(1);
+  });
+
+  it("setPendingFurniture keeps every catalog item clear of walls in the 84㎡ sample", () => {
+    // 84㎡ 샘플의 가장 큰 방(L자 거실)은 무게중심이 내부 벽에 가까워, 무게중심에
+    // 침대를 두면 벽을 가로질러 바로 '추가'가 거절됐다.
+    gs().setStructure(createApartment84StructureFixture(), false);
+    for (const type of Object.keys(FURNITURE_CATALOG) as FurnitureType[]) {
+      useSimulatorStore.setState({ furniture: [], validationErrors: [] });
+      gs().setPendingFurniture(type);
+      gs().commitPendingFurniture();
+      expect({ type, errors: gs().validationErrors }).toEqual({ type, errors: [] });
+      expect(gs().furniture).toHaveLength(1);
+    }
+  });
+
+  it("setPendingFurniture fits a rotated single bed in the 84㎡ sample", () => {
+    gs().setStructure(createApartment84StructureFixture(), false);
+    gs().setPendingFurniture("bed", { name: "싱글 침대", width: 1000, depth: 2000, rotation: 90 });
     gs().commitPendingFurniture();
     expect(gs().validationErrors).toEqual([]);
     expect(gs().furniture).toHaveLength(1);
