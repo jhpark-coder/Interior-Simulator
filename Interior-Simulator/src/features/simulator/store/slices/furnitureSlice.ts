@@ -31,6 +31,24 @@ const FURNITURE_OUTSIDE_STRUCTURE_ERROR =
   "가구가 집 구조 바깥에 있습니다. 방 내부로 옮겨 주세요.";
 const FURNITURE_CROSSES_WALL_ERROR =
   "가구가 벽을 가로지릅니다. 문이나 열린 통로를 이용해 배치해 주세요.";
+export const FURNITURE_LOCKED_ERROR =
+  "잠긴 가구입니다. 잠금을 풀어야 옮기거나 삭제할 수 있습니다.";
+export const FURNITURE_DUPLICATE_NO_SPACE_ERROR =
+  "복제한 가구를 놓을 빈 자리를 찾지 못했습니다. 주변을 비우거나 직접 옮겨 주세요.";
+
+// 복제본은 원본 주변을 300mm 간격으로 넓혀 가며 벽·다른 가구와 겹치지 않는 첫 자리에 둔다.
+const DUPLICATE_STEP_MM = 300;
+const DUPLICATE_MAX_RINGS = 6;
+const DUPLICATE_DIRECTIONS = [
+  [1, 1],
+  [1, 0],
+  [0, 1],
+  [-1, 1],
+  [1, -1],
+  [-1, 0],
+  [0, -1],
+  [-1, -1],
+] as const;
 
 function placementError(
   item: FurnitureItem,
@@ -101,6 +119,9 @@ export type FurnitureSliceState = {
   addFurniture: (type: FurnitureType, overrides?: Partial<FurnitureItem>) => void;
   updateFurniture: (id: string, patch: Partial<FurnitureItem>) => void;
   removeFurniture: (id: string) => void;
+  /** 비어 있는 주변 자리에 복제해 선택한다. 자리가 없으면 null. */
+  duplicateFurniture: (id: string) => string | null;
+  setFurnitureLocked: (id: string, locked: boolean) => void;
   attachToParent: (childId: string, parentId: string) => void;
   detachFromParent: (childId: string) => void;
 };
@@ -216,6 +237,13 @@ export const createFurnitureSlice: StateCreator<
     const { furniture } = get();
     const target = furniture.find((item) => item.id === id);
     if (!target) return;
+    if (target.locked) {
+      set({
+        selectedEntity: { kind: "furniture", id },
+        validationErrors: [FURNITURE_LOCKED_ERROR],
+      });
+      return;
+    }
     const { id: _targetId, ...draft } = target;
     set({
       pendingFurniture: null,
@@ -431,10 +459,15 @@ export const createFurnitureSlice: StateCreator<
   },
 
   removeFurniture: (id) => {
-    const { past, future } = pushSnapshotFromState(get);
     const { furniture } = get();
     const childIds = new Set(furniture.filter((f) => f.parentId === id).map((f) => f.id));
     const removeIds = new Set([id, ...childIds]);
+    // 부착된 가구도 함께 지워지므로 그중 하나라도 잠겨 있으면 지우지 않는다.
+    if (furniture.some((item) => removeIds.has(item.id) && item.locked)) {
+      set({ validationErrors: [FURNITURE_LOCKED_ERROR] });
+      return;
+    }
+    const { past, future } = pushSnapshotFromState(get);
 
     set((state) => ({
       furniture: state.furniture.filter((item) => !removeIds.has(item.id)),
@@ -448,6 +481,51 @@ export const createFurnitureSlice: StateCreator<
       historyFuture: future,
     }));
   },
+
+  duplicateFurniture: (id) => {
+    const { furniture, structure } = get();
+    const source = furniture.find((item) => item.id === id);
+    if (!source) return null;
+    const base: FurnitureItem = {
+      ...structuredClone(source),
+      id: createId(),
+      locked: false,
+      parentId: undefined,
+      attachOffsetX: undefined,
+      attachOffsetY: undefined,
+    };
+    for (let ring = 1; ring <= DUPLICATE_MAX_RINGS; ring += 1) {
+      for (const [dx, dy] of DUPLICATE_DIRECTIONS) {
+        const candidate: FurnitureItem = {
+          ...base,
+          x: source.x + dx * ring * DUPLICATE_STEP_MM,
+          y: source.y + dy * ring * DUPLICATE_STEP_MM,
+        };
+        if (checkCollisionWithOthers(candidate, furniture, new Set())) continue;
+        if (placementError(candidate, structure)) continue;
+        const { past, future } = pushSnapshotFromState(get);
+        set({
+          furniture: [...furniture, candidate],
+          selectedEntity: { kind: "furniture", id: candidate.id },
+          historyPast: past,
+          historyFuture: future,
+          validationErrors: [],
+        });
+        return candidate.id;
+      }
+    }
+    set({ validationErrors: [FURNITURE_DUPLICATE_NO_SPACE_ERROR] });
+    return null;
+  },
+
+  setFurnitureLocked: (id, locked) =>
+    set((state) => ({
+      furniture: state.furniture.map((item) => (item.id === id ? { ...item, locked } : item)),
+      // 옮기던 가구를 잠그면 배치 모드를 끝낸다.
+      placingFurnitureId: locked && state.placingFurnitureId === id ? null : state.placingFurnitureId,
+      placingFurniture: locked && state.placingFurnitureId === id ? null : state.placingFurniture,
+      validationErrors: [],
+    })),
 
   attachToParent: (childId, parentId) => {
     const { furniture } = get();

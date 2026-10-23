@@ -20,6 +20,8 @@ type FurnitureLayerProps = {
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
   onUpdatePending: (patch: Partial<PendingFurniture>) => void;
   onUpdatePlacing: (patch: Partial<PendingFurniture>) => void;
+  /** 현재 구조에서 벽 밖·벽 관통인 가구 id (빨간 점선으로 표시). */
+  misplacedIds?: ReadonlySet<string>;
 };
 
 type FurnitureItemProps = {
@@ -27,6 +29,7 @@ type FurnitureItemProps = {
   room: Room;
   allFurniture: FurnitureItem[];
   isSelected: boolean;
+  isMisplaced?: boolean;
   isPlacementEnabled?: boolean;
   onSelect: (id: string) => void;
   onStartPlacement: (id: string) => void;
@@ -41,6 +44,7 @@ type PendingFurnitureItemProps = {
 };
 
 const DEFAULT_FURNITURE_STROKE = "#a8a8a8";
+const MISPLACED_FURNITURE_STROKE = "#dc2626";
 
 // Helper function to adjust color brightness
 const adjustColor = (color: string, amount: number) => {
@@ -405,6 +409,7 @@ export function FurnitureLayer({
   onUpdate,
   onUpdatePending,
   onUpdatePlacing,
+  misplacedIds,
 }: FurnitureLayerProps) {
   return (
     <Layer>
@@ -441,6 +446,7 @@ export function FurnitureLayer({
           isSelected={
             selectedEntity?.kind === "furniture" && selectedEntity.id === item.id
           }
+          isMisplaced={misplacedIds?.has(item.id) ?? false}
           isPlacementEnabled={false}
           onSelect={onSelect}
           onStartPlacement={onStartPlacement}
@@ -472,6 +478,7 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
   room,
   allFurniture,
   isSelected,
+  isMisplaced = false,
   isPlacementEnabled = false,
   onSelect,
   onStartPlacement,
@@ -481,6 +488,8 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
   const [lastValidPos, setLastValidPos] = useState({ x: item.x, y: item.y });
   const halfWidth = item.width / 2;
   const halfDepth = item.depth / 2;
+  // 표시 크기(mm). 가구가 작아도 읽을 수 있고 커도 가구를 덮지 않게 짧은 변에 맞춘다.
+  const badgeSize = Math.min(Math.max(Math.min(item.width, item.depth) * 0.18, 60), 220);
 
   useEffect(() => {
     if (groupRef.current) {
@@ -592,10 +601,24 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
         width={item.width}
         height={item.depth}
         fill="transparent"
-        stroke={isSelected ? "#4A90E2" : item.parentId ? "#e67e22" : DEFAULT_FURNITURE_STROKE}
-        strokeWidth={isSelected ? 4 : item.parentId ? 3 : 2}
+        stroke={
+          isSelected
+            ? "#4A90E2"
+            : isMisplaced
+              ? MISPLACED_FURNITURE_STROKE
+              : item.parentId
+                ? "#e67e22"
+                : DEFAULT_FURNITURE_STROKE
+        }
+        strokeWidth={isSelected ? 4 : isMisplaced ? Math.max(4, badgeSize * 0.3) : item.parentId ? 3 : 2}
         cornerRadius={4}
-        dash={item.parentId && !isSelected ? [8, 4] : undefined}
+        dash={
+          isMisplaced && !isSelected
+            ? [badgeSize, badgeSize * 0.6]
+            : item.parentId && !isSelected
+              ? [8, 4]
+              : undefined
+        }
       />
       {/* Type-specific visual markers */}
       <FurnitureMarker item={item} />
@@ -610,6 +633,26 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
         fill="white"
         listening={false}
       />
+      {item.locked && (
+        <Group x={badgeSize * 0.3} y={badgeSize * 0.3} listening={false}>
+          <Rect
+            width={badgeSize * 2.2}
+            height={badgeSize * 1.2}
+            fill="rgba(17, 24, 39, 0.78)"
+            cornerRadius={badgeSize * 0.25}
+          />
+          <Text
+            text="잠김"
+            width={badgeSize * 2.2}
+            height={badgeSize * 1.2}
+            align="center"
+            verticalAlign="middle"
+            fontSize={badgeSize * 0.7}
+            fontStyle="bold"
+            fill="white"
+          />
+        </Group>
+      )}
     </Group>
   );
 });

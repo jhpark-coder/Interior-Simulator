@@ -5,7 +5,7 @@ import {
   createThreeRoomStructureFixture,
 } from "../domain/structure";
 import type { FurnitureItem } from "../types";
-import { validateFurnitureInStructure } from "./scenarioValidation";
+import { findMisplacedFurniture, validateFurnitureInStructure } from "./scenarioValidation";
 
 function furniture(
   x: number,
@@ -75,5 +75,31 @@ describe("scenario structure validation", () => {
         structure
       )
     ).toEqual({ valid: true });
+  });
+});
+
+describe("findMisplacedFurniture", () => {
+  it("lists only the items outside the structure or across a wall, with the reason", () => {
+    // 방 3개 구조에는 x=3000(y 0~4500)의 내부 벽이 있다.
+    const structure = createThreeRoomStructureFixture();
+    const inside = { ...furniture(500, 500), id: "inside" };
+    const outside = { ...furniture(-2000, 500), id: "outside" };
+    const crossing = { ...furniture(2600, 500), id: "crossing" };
+    expect(validateFurnitureInStructure(crossing, structure)).toEqual({
+      valid: false,
+      reason: "crosses-wall",
+    });
+
+    expect(findMisplacedFurniture([inside, outside, crossing], structure)).toEqual([
+      { id: "outside", reason: "outside-structure" },
+      { id: "crossing", reason: "crosses-wall" },
+    ]);
+  });
+
+  it("treats every item as outside when the structure has no rooms", () => {
+    const structure = { ...createRectangularStructureFixture(), rooms: [] };
+    expect(findMisplacedFurniture([furniture(500, 500)], structure)).toEqual([
+      { id: "test-item", reason: "outside-structure" },
+    ]);
   });
 });

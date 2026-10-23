@@ -198,3 +198,22 @@ export function validateFurnitureInStructure(
   if (crossesWall) return { valid: false, reason: "crosses-wall" };
   return { valid: true };
 }
+
+export type MisplacedFurniture = {
+  id: string;
+  reason: NonNullable<FurniturePlacementValidation["reason"]>;
+};
+
+/**
+ * 현재 구조 기준으로 벽 밖에 있거나 벽을 가로지르는 가구. 구조 리비전을 바꾸거나 벽을
+ * 고친 뒤 이미 놓인 가구가 어긋난 것을 찾는 데 쓴다.
+ */
+export function findMisplacedFurniture(
+  furniture: FurnitureItem[],
+  structure: FloorStructure
+): MisplacedFurniture[] {
+  return furniture.flatMap((item) => {
+    const result = validateFurnitureInStructure(item, structure);
+    return result.valid ? [] : [{ id: item.id, reason: result.reason ?? "outside-structure" }];
+  });
+}

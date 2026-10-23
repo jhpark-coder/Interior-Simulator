@@ -139,6 +139,8 @@ export function InspectorPanel() {
   const {
     setRoom,
     startPlacementForFurniture,
+    duplicateFurniture,
+    setFurnitureLocked,
     updateFurniture,
     removeFurniture,
     updateDoor,
@@ -162,6 +164,8 @@ export function InspectorPanel() {
     useShallow((s) => ({
       setRoom: s.setRoom,
       startPlacementForFurniture: s.startPlacementForFurniture,
+      duplicateFurniture: s.duplicateFurniture,
+      setFurnitureLocked: s.setFurnitureLocked,
       updateFurniture: s.updateFurniture,
       removeFurniture: s.removeFurniture,
       updateDoor: s.updateDoor,
@@ -779,232 +783,260 @@ export function InspectorPanel() {
           <div>
             <p className="panel-kicker">선택됨</p>
             <h2 className="panel-title">{selectedFurniture.name}</h2>
-            <p className="panel-subtitle">더블클릭 또는 아래 버튼으로 배치 모드로 전환</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => startPlacementForFurniture(selectedFurniture.id)}
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.5rem 0.75rem",
-              background: "#4A90E2",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
-          >
-            배치 모드로 전환
-          </button>
-          <div className="inspector-grid">
-            {numberField("X (mm)", Math.round(selectedFurniture.x), (next) => {
-              updateFurniture(selectedFurniture.id, { x: next });
-              commitHistory();
-            })}
-            {numberField("Y (mm)", Math.round(selectedFurniture.y), (next) => {
-              updateFurniture(selectedFurniture.id, { y: next });
-              commitHistory();
-            })}
-            {numberField("너비 (mm)", selectedFurniture.width, (next) => {
-              updateFurniture(selectedFurniture.id, {
-                width: Math.max(next, 100),
-              });
-              commitHistory();
-            })}
-            {numberField("깊이 (mm)", selectedFurniture.depth, (next) => {
-              updateFurniture(selectedFurniture.id, {
-                depth: Math.max(next, 100),
-              });
-              commitHistory();
-            })}
-            {numberField("높이 (mm)", selectedFurniture.height, (next) => {
-              updateFurniture(selectedFurniture.id, {
-                height: Math.max(next, 100),
-              });
-              commitHistory();
-            })}
-            {numberField(
-              "회전 (도)",
-              Math.round(selectedFurniture.rotation),
-              (next) => {
-                updateFurniture(selectedFurniture.id, { rotation: normalizeRotation(next) });
-                commitHistory();
-              }
+            {!selectedFurniture.locked && (
+              <p className="panel-subtitle">더블클릭 또는 아래 버튼으로 배치 모드로 전환</p>
             )}
-            {colorField("색상", selectedFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) => {
-              updateFurniture(selectedFurniture.id, { color: next });
-              commitHistory();
-            })}
-            {isMonitorType(selectedFurniture.type) &&
-              numberField(
-                "모니터 인치",
-                Math.round(
-                  (selectedFurniture.monitorInches ??
-                    defaultMonitorInches(
-                      selectedFurniture.type,
-                      selectedFurniture.name,
-                      selectedFurniture.width,
-                      selectedFurniture.depth,
-                      selectedFurniture.height,
-                    )) * 10,
-                ) / 10,
-                (next) => {
-                  updateFurniture(selectedFurniture.id, { monitorInches: Math.max(next, 10) });
-                  commitHistory();
-                },
-              )}
           </div>
-          {isMonitorType(selectedFurniture.type) && (
+          <div className="inspector-rotate-actions inspector-item-actions">
             <button
               type="button"
-              onClick={() => {
-                updateFurniture(selectedFurniture.id, {
-                  pivoted: !selectedFurniture.pivoted,
-                });
-                commitHistory();
-              }}
+              title="Ctrl/Cmd + D"
+              onClick={() => duplicateFurniture(selectedFurniture.id)}
+            >
+              복제
+            </button>
+            <button
+              type="button"
+              aria-pressed={!!selectedFurniture.locked}
+              onClick={() =>
+                setFurnitureLocked(selectedFurniture.id, !selectedFurniture.locked)
+              }
+            >
+              {selectedFurniture.locked ? "잠금 해제" : "잠금"}
+            </button>
+          </div>
+          {selectedFurniture.locked ? (
+            <p className="panel-subtitle">
+              잠긴 가구는 옮기거나 크기를 바꾸거나 삭제할 수 없습니다. 고치려면 잠금을 푸세요.
+            </p>
+          ) : (
+            <>
+            <button
+              type="button"
+              onClick={() => startPlacementForFurniture(selectedFurniture.id)}
               style={{
                 marginTop: "0.5rem",
                 padding: "0.5rem 0.75rem",
-                background: selectedFurniture.pivoted ? "#4A90E2" : "#ddd",
-                color: selectedFurniture.pivoted ? "white" : "#333",
+                background: "#4A90E2",
+                color: "white",
                 border: "none",
-                borderRadius: "4px",
+                borderRadius: "6px",
                 cursor: "pointer",
-                width: "100%",
+                fontWeight: 500,
               }}
             >
-              피벗 전환 {selectedFurniture.pivoted ? "(세로)" : "(가로)"}
+              배치 모드로 전환
             </button>
-          )}
-          <div className="inspector-rotate-actions">
-            <button type="button" onClick={() => rotateSelectedFurniture(-15)}>
-              -15°
-            </button>
-            <button type="button" onClick={() => rotateSelectedFurniture(15)}>
-              +15°
-            </button>
-            <button type="button" onClick={() => rotateSelectedFurniture(-90)}>
-              -90°
-            </button>
-            <button type="button" onClick={() => rotateSelectedFurniture(90)}>
-              +90°
-            </button>
-          </div>
-          {/* Attachment UI for monitor types */}
-          {isAttachableType(selectedFurniture.type) && !selectedFurniture.parentId && (
-            <div style={{ marginTop: "1rem" }}>
-              <p style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>
-                부착 가능한 책상:
-              </p>
-              {furniture
-                .filter((f) => isParentType(f.type) && !f.parentId)
-                .map((desk) => (
-                  <button
-                    key={desk.id}
-                    onClick={() => attachToParent(selectedFurniture.id, desk.id)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      marginBottom: "0.25rem",
-                      padding: "0.5rem 0.75rem",
-                      background: "#e67e22",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    {desk.name}에 부착
-                  </button>
-                ))}
-              {furniture.filter((f) => isParentType(f.type) && !f.parentId).length === 0 && (
-                <p style={{ fontSize: "0.8rem", color: "#999" }}>배치된 책상이 없습니다</p>
+            <div className="inspector-grid">
+              {numberField("X (mm)", Math.round(selectedFurniture.x), (next) => {
+                updateFurniture(selectedFurniture.id, { x: next });
+                commitHistory();
+              })}
+              {numberField("Y (mm)", Math.round(selectedFurniture.y), (next) => {
+                updateFurniture(selectedFurniture.id, { y: next });
+                commitHistory();
+              })}
+              {numberField("너비 (mm)", selectedFurniture.width, (next) => {
+                updateFurniture(selectedFurniture.id, {
+                  width: Math.max(next, 100),
+                });
+                commitHistory();
+              })}
+              {numberField("깊이 (mm)", selectedFurniture.depth, (next) => {
+                updateFurniture(selectedFurniture.id, {
+                  depth: Math.max(next, 100),
+                });
+                commitHistory();
+              })}
+              {numberField("높이 (mm)", selectedFurniture.height, (next) => {
+                updateFurniture(selectedFurniture.id, {
+                  height: Math.max(next, 100),
+                });
+                commitHistory();
+              })}
+              {numberField(
+                "회전 (도)",
+                Math.round(selectedFurniture.rotation),
+                (next) => {
+                  updateFurniture(selectedFurniture.id, { rotation: normalizeRotation(next) });
+                  commitHistory();
+                }
               )}
+              {colorField("색상", selectedFurniture.color ?? DEFAULT_FURNITURE_COLOR, (next) => {
+                updateFurniture(selectedFurniture.id, { color: next });
+                commitHistory();
+              })}
+              {isMonitorType(selectedFurniture.type) &&
+                numberField(
+                  "모니터 인치",
+                  Math.round(
+                    (selectedFurniture.monitorInches ??
+                      defaultMonitorInches(
+                        selectedFurniture.type,
+                        selectedFurniture.name,
+                        selectedFurniture.width,
+                        selectedFurniture.depth,
+                        selectedFurniture.height,
+                      )) * 10,
+                  ) / 10,
+                  (next) => {
+                    updateFurniture(selectedFurniture.id, { monitorInches: Math.max(next, 10) });
+                    commitHistory();
+                  },
+                )}
             </div>
-          )}
-          {isAttachableType(selectedFurniture.type) && selectedFurniture.parentId && (
-            <div style={{ marginTop: "1rem" }}>
-              <p style={{ fontSize: "0.875rem", color: "#e67e22", marginBottom: "0.5rem" }}>
-                {furniture.find((f) => f.id === selectedFurniture.parentId)?.name ?? "알 수 없음"}에 부착됨
-              </p>
+            {isMonitorType(selectedFurniture.type) && (
               <button
-                onClick={() => detachFromParent(selectedFurniture.id)}
+                type="button"
+                onClick={() => {
+                  updateFurniture(selectedFurniture.id, {
+                    pivoted: !selectedFurniture.pivoted,
+                  });
+                  commitHistory();
+                }}
                 style={{
-                  width: "100%",
+                  marginTop: "0.5rem",
                   padding: "0.5rem 0.75rem",
-                  background: "#95a5a6",
-                  color: "white",
+                  background: selectedFurniture.pivoted ? "#4A90E2" : "#ddd",
+                  color: selectedFurniture.pivoted ? "white" : "#333",
                   border: "none",
                   borderRadius: "4px",
                   cursor: "pointer",
-                  fontSize: "0.875rem",
+                  width: "100%",
                 }}
               >
-                분리
+                피벗 전환 {selectedFurniture.pivoted ? "(세로)" : "(가로)"}
+              </button>
+            )}
+            <div className="inspector-rotate-actions">
+              <button type="button" onClick={() => rotateSelectedFurniture(-15)}>
+                -15°
+              </button>
+              <button type="button" onClick={() => rotateSelectedFurniture(15)}>
+                +15°
+              </button>
+              <button type="button" onClick={() => rotateSelectedFurniture(-90)}>
+                -90°
+              </button>
+              <button type="button" onClick={() => rotateSelectedFurniture(90)}>
+                +90°
               </button>
             </div>
-          )}
-          {/* Attached items list for parent types */}
-          {isParentType(selectedFurniture.type) && (() => {
-            const children = getChildren(selectedFurniture.id, furniture);
-            if (children.length === 0) return null;
-            return (
+            {/* Attachment UI for monitor types */}
+            {isAttachableType(selectedFurniture.type) && !selectedFurniture.parentId && (
               <div style={{ marginTop: "1rem" }}>
                 <p style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>
-                  부착된 아이템:
+                  부착 가능한 책상:
                 </p>
-                {children.map((child) => (
-                  <div
-                    key={child.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "0.25rem",
-                      padding: "0.4rem 0.5rem",
-                      background: "#fef3e2",
-                      borderRadius: "4px",
-                      border: "1px solid #e67e22",
-                    }}
-                  >
-                    <span style={{ fontSize: "0.85rem", color: "#333" }}>{child.name}</span>
+                {furniture
+                  .filter((f) => isParentType(f.type) && !f.parentId)
+                  .map((desk) => (
                     <button
-                      onClick={() => detachFromParent(child.id)}
+                      key={desk.id}
+                      onClick={() => attachToParent(selectedFurniture.id, desk.id)}
                       style={{
-                        padding: "0.2rem 0.5rem",
-                        background: "#95a5a6",
+                        display: "block",
+                        width: "100%",
+                        marginBottom: "0.25rem",
+                        padding: "0.5rem 0.75rem",
+                        background: "#e67e22",
                         color: "white",
                         border: "none",
-                        borderRadius: "3px",
+                        borderRadius: "4px",
                         cursor: "pointer",
-                        fontSize: "0.75rem",
+                        fontSize: "0.875rem",
                       }}
                     >
-                      분리
+                      {desk.name}에 부착
                     </button>
-                  </div>
-                ))}
+                  ))}
+                {furniture.filter((f) => isParentType(f.type) && !f.parentId).length === 0 && (
+                  <p style={{ fontSize: "0.8rem", color: "#999" }}>배치된 책상이 없습니다</p>
+                )}
               </div>
-            );
-          })()}
-          <button
-            className="inspector-delete"
-            onClick={() => removeFurniture(selectedFurniture.id)}
-            style={{
-              marginTop: "1rem",
-              padding: "0.5rem 1rem",
-              background: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            가구 삭제
-          </button>
+            )}
+            {isAttachableType(selectedFurniture.type) && selectedFurniture.parentId && (
+              <div style={{ marginTop: "1rem" }}>
+                <p style={{ fontSize: "0.875rem", color: "#e67e22", marginBottom: "0.5rem" }}>
+                  {furniture.find((f) => f.id === selectedFurniture.parentId)?.name ?? "알 수 없음"}에 부착됨
+                </p>
+                <button
+                  onClick={() => detachFromParent(selectedFurniture.id)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem 0.75rem",
+                    background: "#95a5a6",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  분리
+                </button>
+              </div>
+            )}
+            {/* Attached items list for parent types */}
+            {isParentType(selectedFurniture.type) && (() => {
+              const children = getChildren(selectedFurniture.id, furniture);
+              if (children.length === 0) return null;
+              return (
+                <div style={{ marginTop: "1rem" }}>
+                  <p style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>
+                    부착된 아이템:
+                  </p>
+                  {children.map((child) => (
+                    <div
+                      key={child.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "0.25rem",
+                        padding: "0.4rem 0.5rem",
+                        background: "#fef3e2",
+                        borderRadius: "4px",
+                        border: "1px solid #e67e22",
+                      }}
+                    >
+                      <span style={{ fontSize: "0.85rem", color: "#333" }}>{child.name}</span>
+                      <button
+                        onClick={() => detachFromParent(child.id)}
+                        style={{
+                          padding: "0.2rem 0.5rem",
+                          background: "#95a5a6",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "3px",
+                          cursor: "pointer",
+                          fontSize: "0.75rem",
+                        }}
+                      >
+                        분리
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            <button
+              className="inspector-delete"
+              onClick={() => removeFurniture(selectedFurniture.id)}
+              style={{
+                marginTop: "1rem",
+                padding: "0.5rem 1rem",
+                background: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              가구 삭제
+            </button>
+            </>
+          )}
         </>
       )}
 
