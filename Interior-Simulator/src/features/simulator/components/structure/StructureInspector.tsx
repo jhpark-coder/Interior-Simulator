@@ -1,5 +1,7 @@
 import {
+  MAX_DOOR_OPEN_ANGLE,
   pointAlongWall,
+  resolvedDoorDetails,
   wallLength,
   type Opening,
   type RoomRegion,
@@ -13,11 +15,13 @@ function NumericField({
   label,
   value,
   min,
+  max,
   onChange,
 }: {
   label: string;
   value: number;
   min?: number;
+  max?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -26,6 +30,7 @@ function NumericField({
       <input
         type="number"
         min={min}
+        max={max}
         value={Math.round(value * 1000) / 1000}
         onChange={(event) => {
           const next = Number(event.target.value);
@@ -103,6 +108,92 @@ function WallInspector({ wall }: { wall: Wall }) {
   );
 }
 
+function SelectField<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <label className="structure-field">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value as T)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function DoorDetailFields({ opening }: { opening: Opening }) {
+  const update = useSimulatorStore((state) => state.updateStructureOpening);
+  const details = resolvedDoorDetails(opening);
+  return (
+    <>
+      <SelectField
+        label="문 종류"
+        value={details.doorType}
+        options={[
+          { value: "swing", label: "여닫이문" },
+          { value: "sliding", label: "미닫이문" },
+        ]}
+        onChange={(doorType) => update(opening.id, { doorType })}
+      />
+      {details.doorType === "swing" ? (
+        <>
+          <SelectField
+            label="경첩 위치"
+            value={details.hinge}
+            options={[
+              { value: "left", label: "벽 시작점 쪽" },
+              { value: "right", label: "벽 끝점 쪽" },
+            ]}
+            onChange={(hinge) => update(opening.id, { hinge })}
+          />
+          <SelectField
+            label="열리는 쪽"
+            value={details.swing}
+            options={[
+              { value: "inward", label: "방 안쪽" },
+              { value: "outward", label: "방 바깥쪽" },
+            ]}
+            onChange={(swing) => update(opening.id, { swing })}
+          />
+          <NumericField
+            label="열림 각도 (°)"
+            value={details.openAngle}
+            min={0}
+            max={MAX_DOOR_OPEN_ANGLE}
+            onChange={(openAngle) =>
+              update(opening.id, {
+                openAngle: Math.min(MAX_DOOR_OPEN_ANGLE, Math.max(0, openAngle)),
+              })
+            }
+          />
+        </>
+      ) : (
+        <SelectField
+          label="미는 방향"
+          value={details.slideDirection}
+          options={[
+            { value: "left", label: "벽 시작점 쪽" },
+            { value: "right", label: "벽 끝점 쪽" },
+          ]}
+          onChange={(slideDirection) => update(opening.id, { slideDirection })}
+        />
+      )}
+    </>
+  );
+}
+
 function OpeningInspector({ opening }: { opening: Opening }) {
   const update = useSimulatorStore((state) => state.updateStructureOpening);
   const remove = useSimulatorStore((state) => state.removeStructureOpening);
@@ -135,6 +226,7 @@ function OpeningInspector({ opening }: { opening: Opening }) {
           onChange={(sillHeight) => update(opening.id, { sillHeight })}
         />
       )}
+      {opening.kind === "door" && <DoorDetailFields opening={opening} />}
       <button className="structure-danger" onClick={() => remove(opening.id)}>
         삭제
       </button>

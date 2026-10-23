@@ -1,4 +1,4 @@
-import { Circle, Group, Layer, Line, Text } from "react-konva";
+import { Arrow, Circle, Group, Layer, Line, Text } from "react-konva";
 import type Konva from "konva";
 import type { SelectedStructureEntity } from "../store/slices/structureSlice";
 import type {
@@ -11,8 +11,14 @@ import type {
 } from "../domain/structure";
 import type { MaterialAssignment } from "../domain/scenario";
 import {
+  doorLeafDirection,
+  doorSwingArc,
+  doorSwingGeometry,
+  inwardNormal,
   pointAlongWall,
   projectPointToWall,
+  resolvedDoorDetails,
+  slidingDoorDirection,
   wallLength,
   wallNormal,
 } from "../domain/structure";
@@ -116,9 +122,93 @@ function WallNode({
   );
 }
 
+/** 문짝과 열림 범위. 여닫이는 열린 문짝과 호, 미닫이는 방 쪽에 겹친 문짝과 미는 방향. */
+function DoorSymbol({
+  opening,
+  wall,
+  structure,
+  center,
+  scale,
+  color,
+}: {
+  opening: Opening;
+  wall: Wall;
+  structure: FloorStructure;
+  center: Vec2;
+  scale: number;
+  color: string;
+}) {
+  const local = (point: Vec2) => [point.x - center.x, point.y - center.y];
+  const details = resolvedDoorDetails(opening);
+
+  if (details.doorType === "sliding") {
+    const inward = inwardNormal(opening, wall, structure);
+    const shift = wall.thickness / 2 + details.thickness;
+    const along = slidingDoorDirection(opening, wall);
+    const panelStart = pointAlongWall(wall, opening.offset);
+    const panelEnd = pointAlongWall(wall, opening.offset + opening.width);
+    const panel = [panelStart, panelEnd].map((point) => ({
+      x: point.x + inward.x * shift,
+      y: point.y + inward.y * shift,
+    }));
+    const arrowLength = Math.min(opening.width * 0.4, 400);
+    const arrowStart = {
+      x: (panel[0].x + panel[1].x) / 2,
+      y: (panel[0].y + panel[1].y) / 2,
+    };
+    const arrowEnd = {
+      x: arrowStart.x + along.x * arrowLength,
+      y: arrowStart.y + along.y * arrowLength,
+    };
+    return (
+      <Group listening={false}>
+        <Line
+          points={panel.flatMap(local)}
+          stroke={color}
+          strokeWidth={Math.max(details.thickness, 3 / scale)}
+          lineCap="butt"
+        />
+        <Arrow
+          points={[...local(arrowStart), ...local(arrowEnd)]}
+          stroke={color}
+          fill={color}
+          strokeWidth={2 / scale}
+          pointerLength={10 / scale}
+          pointerWidth={8 / scale}
+        />
+      </Group>
+    );
+  }
+
+  const geometry = doorSwingGeometry(opening, wall, structure);
+  const open = doorLeafDirection(geometry, geometry.openAngle);
+  const leafEnd = {
+    x: geometry.hinge.x + open.x * geometry.radius,
+    y: geometry.hinge.y + open.y * geometry.radius,
+  };
+  return (
+    <Group listening={false}>
+      <Line
+        points={doorSwingArc(geometry).flatMap(local)}
+        stroke={color}
+        strokeWidth={1.5 / scale}
+        dash={[8 / scale, 6 / scale]}
+        opacity={0.8}
+      />
+      <Line
+        points={[...local(geometry.hinge), ...local(leafEnd)]}
+        stroke={color}
+        strokeWidth={Math.max(details.thickness, 3 / scale)}
+        lineCap="butt"
+      />
+    </Group>
+  );
+}
+
 function OpeningNode({
   opening,
   wall,
+  structure,
   selected,
   scale,
   onSelect,
@@ -126,6 +216,7 @@ function OpeningNode({
 }: {
   opening: Opening;
   wall: Wall;
+  structure: FloorStructure;
   selected: boolean;
   scale: number;
   onSelect: () => void;
@@ -168,6 +259,16 @@ function OpeningNode({
         );
       }}
     >
+      {opening.kind === "door" && (
+        <DoorSymbol
+          opening={opening}
+          wall={wall}
+          structure={structure}
+          center={center}
+          scale={scale}
+          color={color}
+        />
+      )}
       <Line
         points={[
           start.x - center.x,
@@ -266,6 +367,7 @@ export function StructureLayer({
             key={opening.id}
             opening={opening}
             wall={wall}
+            structure={structure}
             scale={scale}
             selected={
               selected?.kind === "structure-opening" &&
