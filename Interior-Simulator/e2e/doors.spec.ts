@@ -57,10 +57,10 @@ test("문 종류·경첩·열리는 쪽·각도를 편집하고 저장 후 다�
   await field(page, "경첩 위치").selectOption({ label: "벽 끝점 쪽" });
   await field(page, "열리는 쪽").selectOption({ label: "방 바깥쪽" });
   await field(page, "열림 각도").fill("60");
-  // 스키마 상한(180°)을 넘는 값은 저장 전에 잘라 프로젝트 복원이 깨지지 않게 한다.
+  // 스키마 상한(180°)을 넘는 값은 적용하지 않고, 칸을 벗어나면 원래 값으로 돌아간다.
   await field(page, "열림 각도").fill("250");
-  await expect(field(page, "열림 각도")).toHaveValue("180");
-  await field(page, "열림 각도").fill("60");
+  await field(page, "열림 각도").blur();
+  await expect(field(page, "열림 각도")).toHaveValue("60");
 
   let saved = await waitForStoredProject(page, (project) => {
     const door = activeStructure(project).openings[0] as Record<string, unknown> | undefined;

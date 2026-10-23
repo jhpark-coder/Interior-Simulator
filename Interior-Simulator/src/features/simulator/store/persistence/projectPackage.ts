@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import type { InteriorProject } from "../../domain/project";
-import { validateInteriorProject } from "../../domain/project";
+import { repairProjectRanges, validateInteriorProject } from "../../domain/project";
 
 const PROJECT_FILE_NAME = "project.json";
 
@@ -62,7 +62,7 @@ export async function readProjectPackage(
     throw new Error("project.json이 없는 프로젝트 패키지입니다.");
   }
   const parsed: unknown = JSON.parse(await projectFile.async("string"));
-  const validation = validateInteriorProject(parsed);
+  const validation = validateInteriorProject(repairProjectRanges(parsed));
   if (!validation.success) {
     throw new Error("프로젝트 데이터 형식이 올바르지 않습니다.");
   }

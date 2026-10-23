@@ -1,5 +1,10 @@
+import { useState } from "react";
 import {
   MAX_DOOR_OPEN_ANGLE,
+  MIN_WALL_LENGTH,
+  OPENING_MIN_SIZE,
+  WALL_HEIGHT_RANGE,
+  WALL_THICKNESS_RANGE,
   pointAlongWall,
   resolvedDoorDetails,
   wallLength,
@@ -24,6 +29,10 @@ function NumericField({
   max?: number;
   onChange: (value: number) => void;
 }) {
+  // 입력 중인 글자. 비었거나 범위를 벗어난 값은 화면에만 두고 적용하지 않는다.
+  // 예전에는 칸을 비우면 Number("") = 0이 벽 두께로 저장되어 다음에 열 때 프로젝트가
+  // 스키마 검증에 실패했다.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <label className="structure-field">
       <span>{label}</span>
@@ -31,10 +40,64 @@ function NumericField({
         type="number"
         min={min}
         max={max}
-        value={Math.round(value * 1000) / 1000}
+        value={draft ?? String(Math.round(value * 1000) / 1000)}
         onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) onChange(next);
+          const text = event.target.value;
+          setDraft(text);
+          const next = Number(text);
+          if (
+            text.trim() !== "" &&
+            Number.isFinite(next) &&
+            (min === undefined || next >= min) &&
+            (max === undefined || next <= max)
+          ) {
+            onChange(next);
+          }
+        }}
+        onBlur={() => setDraft(null)}
+      />
+    </label>
+  );
+}
+
+/**
+ * Enter나 포커스 이동 때만 반영하는 숫자 입력. 입력 중 값(예: 3500을 치는 동안의 3, 35)이
+ * 바로 적용되면 연결된 벽까지 크게 움직이기 때문이다. 범위 밖 값은 버리고 원래 값으로 돌린다.
+ */
+function CommittedNumberField({
+  label,
+  value,
+  min,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const next = Number(draft);
+    if (Number.isFinite(next) && (min === undefined || next >= min)) onCommit(next);
+    // 반영했든 거절했든 입력 중 값을 버리고 store 값을 다시 보여 준다.
+    setDraft(null);
+  };
+  return (
+    <label className="structure-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        min={min}
+        value={draft ?? String(Math.round(value))}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") {
+            setDraft(null);
+            event.currentTarget.blur();
+          }
         }}
       />
     </label>
@@ -43,6 +106,7 @@ function NumericField({
 
 function WallInspector({ wall }: { wall: Wall }) {
   const updateWall = useSimulatorStore((state) => state.updateWall);
+  const setWallLength = useSimulatorStore((state) => state.setWallLength);
   const splitWall = useSimulatorStore((state) => state.splitWall);
   const removeWall = useSimulatorStore((state) => state.removeWall);
   const midpoint = pointAlongWall(wall, wallLength(wall) / 2);
@@ -73,13 +137,15 @@ function WallInspector({ wall }: { wall: Wall }) {
       <NumericField
         label="벽 두께 (mm)"
         value={wall.thickness}
-        min={20}
+        min={WALL_THICKNESS_RANGE.min}
+        max={WALL_THICKNESS_RANGE.max}
         onChange={(thickness) => updateWall(wall.id, { thickness })}
       />
       <NumericField
         label="벽 높이 (mm)"
         value={wall.height}
-        min={100}
+        min={WALL_HEIGHT_RANGE.min}
+        max={WALL_HEIGHT_RANGE.max}
         onChange={(height) => updateWall(wall.id, { height })}
       />
       <label className="structure-field">
@@ -97,7 +163,12 @@ function WallInspector({ wall }: { wall: Wall }) {
           <option value="partition">가벽</option>
         </select>
       </label>
-      <div className="structure-readonly">길이: {Math.round(wallLength(wall))} mm</div>
+      <CommittedNumberField
+        label="길이 (mm)"
+        value={wallLength(wall)}
+        min={MIN_WALL_LENGTH}
+        onCommit={(length) => setWallLength(wall.id, length)}
+      />
       <div className="structure-inline-actions">
         <button onClick={() => splitWall(wall.id, midpoint)}>중간에서 분할</button>
         <button className="structure-danger" onClick={() => removeWall(wall.id)}>
@@ -172,11 +243,7 @@ function DoorDetailFields({ opening }: { opening: Opening }) {
             value={details.openAngle}
             min={0}
             max={MAX_DOOR_OPEN_ANGLE}
-            onChange={(openAngle) =>
-              update(opening.id, {
-                openAngle: Math.min(MAX_DOOR_OPEN_ANGLE, Math.max(0, openAngle)),
-              })
-            }
+            onChange={(openAngle) => update(opening.id, { openAngle })}
           />
         </>
       ) : (
@@ -209,13 +276,13 @@ function OpeningInspector({ opening }: { opening: Opening }) {
       <NumericField
         label="너비 (mm)"
         value={opening.width}
-        min={100}
+        min={OPENING_MIN_SIZE}
         onChange={(width) => update(opening.id, { width })}
       />
       <NumericField
         label="높이 (mm)"
         value={opening.height}
-        min={100}
+        min={OPENING_MIN_SIZE}
         onChange={(height) => update(opening.id, { height })}
       />
       {opening.kind === "window" && (

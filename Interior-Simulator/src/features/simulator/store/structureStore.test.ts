@@ -53,6 +53,58 @@ describe("structureSlice", () => {
     expect(east.start).toEqual({ x: 5300, y: 100 });
   });
 
+  it("sets a wall length by moving its end point and the connected wall", () => {
+    // rect-north: (0,0)→(5000,0), rect-east: (5000,0)→(5000,4000)
+    expect(state().setWallLength("rect-north", 6000)).toBe(true);
+    const walls = new Map(state().structure.walls.map((wall) => [wall.id, wall]));
+    expect(walls.get("rect-north")).toMatchObject({ start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } });
+    expect(walls.get("rect-east")!.start).toEqual({ x: 6000, y: 0 });
+    expect(wallLength(walls.get("rect-north")!)).toBeCloseTo(6000);
+    expect(state().structurePast).toHaveLength(1);
+
+    state().undoStructure();
+    expect(state().structure.walls.find((wall) => wall.id === "rect-north")!.end).toEqual({
+      x: 5000,
+      y: 0,
+    });
+  });
+
+  it("keeps the wall when the requested length is below the minimum", () => {
+    const before = state().structure;
+    expect(state().setWallLength("rect-north", 10)).toBe(false);
+    expect(state().setWallLength("rect-north", Number.NaN)).toBe(false);
+    expect(state().setWallLength("missing", 3000)).toBe(false);
+    expect(state().structure).toBe(before);
+    expect(state().structurePast).toHaveLength(0);
+  });
+
+  it("keeps wall and opening values inside the project schema ranges", () => {
+    state().updateWall("rect-north", { thickness: 0, height: 50 });
+    let wall = state().structure.walls.find((item) => item.id === "rect-north")!;
+    expect(wall.thickness).toBe(20);
+    expect(wall.height).toBe(100);
+
+    state().updateWall("rect-north", { thickness: Number.NaN, height: 999999 });
+    wall = state().structure.walls.find((item) => item.id === "rect-north")!;
+    expect(wall.thickness).toBe(20);
+    expect(wall.height).toBe(20000);
+
+    const doorId = state().addStructureOpening({
+      kind: "door",
+      wallId: "rect-north",
+      offset: 1000,
+      width: 900,
+      height: 2100,
+      sillHeight: 0,
+    })!;
+    state().updateStructureOpening(doorId, { width: 0, openAngle: 250, offset: -10 });
+    expect(state().structure.openings.find((item) => item.id === doorId)).toMatchObject({
+      width: 100,
+      openAngle: 180,
+      offset: 0,
+    });
+  });
+
   it("splits a wall and moves openings to the correct new segment", () => {
     state().addStructureOpening({
       id: "window-1",

@@ -1,8 +1,9 @@
 import type { FloorStructure, Opening, Vec2, Wall } from "./types";
 import { pointAlongWall, pointInPolygon, wallDirection, wallNormal } from "./geometry";
+import { OPENING_ANGLE_RANGE } from "./limits";
 
 export const DEFAULT_DOOR_OPEN_ANGLE = 90;
-export const MAX_DOOR_OPEN_ANGLE = 180;
+export const MAX_DOOR_OPEN_ANGLE = OPENING_ANGLE_RANGE.max;
 export const DEFAULT_DOOR_THICKNESS = 40;
 
 // 벽 면에서 이만큼 떨어진 점이 어느 방 안에 있는지로 벽의 '방 쪽'을 판단한다.
