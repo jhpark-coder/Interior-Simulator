@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage } from "react-konva";
 import type Konva from "konva";
 import { useSimulatorStore } from "../store/useSimulatorStore";
@@ -6,9 +6,11 @@ import { getStructureBounds } from "../scene3d/structure3dMath";
 import { useFurnitureReview } from "../hooks/useFurnitureReview";
 import { FurnitureLayer } from "../components/FurnitureLayer";
 import { SnapToggle } from "../components/shell/SnapToggle";
+import { findNarrowWalkways } from "../utils/walkway";
 import { FloorPlanLayer } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
 import { useCanvasSize } from "./useCanvasSize";
+import { WalkwayLayer } from "./WalkwayLayer";
 import "./StructureCanvas.css";
 
 export function ScenarioCanvas() {
@@ -58,6 +60,11 @@ export function ScenarioCanvas() {
     sources.find((source) => source.id === activeSourceId) ?? null;
   const bounds = getStructureBounds(structure);
   const { flaggedIds, blockedOpeningIds } = useFurnitureReview();
+  const [showWalkways, setShowWalkways] = useState(false);
+  const walkways = useMemo(
+    () => (showWalkways ? findNarrowWalkways(furniture, structure) : []),
+    [furniture, showWalkways, structure]
+  );
 
   useEffect(() => {
     const width = Math.max(1000, bounds.maxX, bounds.width);
@@ -139,7 +146,19 @@ export function ScenarioCanvas() {
         </strong>
         <span>
           {Math.round(viewport.scale * 1000)}% · 가구 {furniture.length}개
+          {showWalkways && ` · 좁은 통로 ${walkways.length}곳`}
         </span>
+        <label
+          className="canvas-toggle"
+          title="가구와 가구, 가구와 벽 사이 틈을 표시합니다. 빨강은 600mm 미만, 주황은 900mm 미만입니다."
+        >
+          <input
+            type="checkbox"
+            checked={showWalkways}
+            onChange={(event) => setShowWalkways(event.target.checked)}
+          />
+          통행 폭
+        </label>
         <SnapToggle />
       </div>
       <Stage
@@ -198,6 +217,7 @@ export function ScenarioCanvas() {
           onUpdatePlacing={updatePlacing}
           flaggedIds={flaggedIds}
         />
+        {showWalkways && <WalkwayLayer gaps={walkways} scale={viewport.scale} />}
       </Stage>
     </div>
   );

@@ -5,3 +5,4 @@ export * from "./attachment";
 export * from "./category";
 export * from "./scenarioValidation";
 export * from "./doorClearance";
+export * from "./walkway";

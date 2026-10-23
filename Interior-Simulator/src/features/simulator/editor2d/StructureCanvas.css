@@ -52,7 +52,8 @@
   font-weight: 700;
 }
 
-.structure-canvas-status .snap-toggle {
+.structure-canvas-status .snap-toggle,
+.structure-canvas-status .canvas-toggle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
