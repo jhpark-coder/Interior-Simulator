@@ -55,7 +55,7 @@ export function canvasStatus(page: Page): Locator {
 /** 집 구조 단계의 편집 도구 버튼. 접근성 이름에 아이콘이 섞여 있어 title로 찾는다. */
 export function structureTool(
   page: Page,
-  label: "선택" | "이동" | "벽" | "문" | "창문" | "축척"
+  label: "선택" | "이동" | "벽" | "문" | "창문" | "통로" | "축척"
 ): Locator {
   return page.locator(`.structure-tool[title="${label}"]`);
 }
