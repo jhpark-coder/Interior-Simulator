@@ -1,5 +1,7 @@
+import { useState } from "react";
 import {
   MAX_DOOR_OPEN_ANGLE,
+  MIN_WALL_LENGTH,
   pointAlongWall,
   resolvedDoorDetails,
   wallLength,
@@ -41,8 +43,53 @@ function NumericField({
   );
 }
 
+/**
+ * Enter나 포커스 이동 때만 반영하는 숫자 입력. 입력 중 값(예: 3500을 치는 동안의 3, 35)이
+ * 바로 적용되면 연결된 벽까지 크게 움직이기 때문이다. 범위 밖 값은 버리고 원래 값으로 돌린다.
+ */
+function CommittedNumberField({
+  label,
+  value,
+  min,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const next = Number(draft);
+    if (Number.isFinite(next) && (min === undefined || next >= min)) onCommit(next);
+    // 반영했든 거절했든 입력 중 값을 버리고 store 값을 다시 보여 준다.
+    setDraft(null);
+  };
+  return (
+    <label className="structure-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        min={min}
+        value={draft ?? String(Math.round(value))}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") {
+            setDraft(null);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+    </label>
+  );
+}
+
 function WallInspector({ wall }: { wall: Wall }) {
   const updateWall = useSimulatorStore((state) => state.updateWall);
+  const setWallLength = useSimulatorStore((state) => state.setWallLength);
   const splitWall = useSimulatorStore((state) => state.splitWall);
   const removeWall = useSimulatorStore((state) => state.removeWall);
   const midpoint = pointAlongWall(wall, wallLength(wall) / 2);
@@ -97,7 +144,12 @@ function WallInspector({ wall }: { wall: Wall }) {
           <option value="partition">가벽</option>
         </select>
       </label>
-      <div className="structure-readonly">길이: {Math.round(wallLength(wall))} mm</div>
+      <CommittedNumberField
+        label="길이 (mm)"
+        value={wallLength(wall)}
+        min={MIN_WALL_LENGTH}
+        onCommit={(length) => setWallLength(wall.id, length)}
+      />
       <div className="structure-inline-actions">
         <button onClick={() => splitWall(wall.id, midpoint)}>중간에서 분할</button>
         <button className="structure-danger" onClick={() => removeWall(wall.id)}>

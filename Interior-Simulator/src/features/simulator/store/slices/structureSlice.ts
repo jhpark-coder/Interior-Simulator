@@ -6,6 +6,8 @@ import {
   polygonCentroid,
   splitWallAtPoint,
   validateStructure,
+  MIN_WALL_LENGTH,
+  wallDirection,
   wallLength,
 } from "../../domain/structure";
 import type {
@@ -41,6 +43,8 @@ export type StructureSliceState = {
     endpoint: WallEndpoint,
     position: Vec2
   ) => void;
+  /** 시작점을 두고 끝점을 벽 방향으로 옮겨 길이를 맞춘다. 연결된 벽도 따라간다. */
+  setWallLength: (id: string, length: number) => boolean;
   splitWall: (id: string, point: Vec2) => boolean;
   removeWall: (id: string) => void;
   rebuildRooms: () => void;
@@ -231,6 +235,17 @@ export const createStructureSlice: StateCreator<
       structureFuture: [],
       ...issueState(structure),
     });
+  },
+
+  setWallLength: (id, length) => {
+    const wall = get().structure.walls.find((candidate) => candidate.id === id);
+    if (!wall || !Number.isFinite(length) || length < MIN_WALL_LENGTH) return false;
+    const direction = wallDirection(wall);
+    get().moveWallEndpoint(id, "end", {
+      x: wall.start.x + direction.x * length,
+      y: wall.start.y + direction.y * length,
+    });
+    return true;
   },
 
   splitWall: (id, point) => {
