@@ -138,7 +138,8 @@ export async function createPhotoPng(page: Page, color: string): Promise<Buffer>
 /**
  * 평면도만 있고 구조가 빈 상태에서 `전체 보기`를 누른 뒤, 평면도 픽셀 좌표를
  * 클릭하는 함수를 돌려준다. 축척(mm/px)과 무관하게 같은 위치가 된다.
- * 버튼 클릭으로 페이지가 스크롤될 수 있어 캔버스 위치는 클릭할 때마다 다시 읽는다.
+ * 버튼 클릭으로 페이지가 스크롤될 수 있어 캔버스 위치는 클릭할 때마다 다시 읽고,
+ * 클릭할 점이 화면 밖이면 캔버스 위쪽(또는 아래쪽)이 보이게 스크롤한다.
  */
 export async function floorPlanClicker(
   page: Page,
@@ -152,10 +153,23 @@ export async function floorPlanClicker(
     (initial.width - FIT_PADDING * 2) / image.widthPx,
     (initial.height - FIT_PADDING * 2) / image.heightPx
   );
-  return async (x: number, y: number) => {
-    await canvas.scrollIntoViewIfNeeded();
+  const boxOf = async () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error("구조 캔버스를 찾을 수 없습니다.");
+    return box;
+  };
+  return async (x: number, y: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    let box = await boxOf();
+    const targetY = box.y + FIT_PADDING + y * pixelScale;
+    const viewportHeight = page.viewportSize()?.height ?? Number.POSITIVE_INFINITY;
+    if (targetY < 0 || targetY > viewportHeight) {
+      await canvas.evaluate(
+        (element, block) => element.scrollIntoView({ block }),
+        targetY < 0 ? "start" : "end"
+      );
+      box = await boxOf();
+    }
     await page.mouse.click(
       box.x + FIT_PADDING + x * pixelScale,
       box.y + FIT_PADDING + y * pixelScale

@@ -7,7 +7,7 @@
 
 .structure-tool-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
@@ -127,6 +127,16 @@
   gap: 5px;
   color: #64748b;
   font-size: 0.82rem;
+}
+
+.structure-control-stack .floorplan-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+
+.structure-control-stack .floorplan-checkbox input {
+  width: auto;
 }
 
 .floorplan-adjust-note {

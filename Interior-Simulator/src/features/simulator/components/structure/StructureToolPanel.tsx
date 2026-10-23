@@ -327,7 +327,7 @@ export function StructureToolPanel() {
               />
             </label>
             <div className="structure-inline-actions">
-              <label className="detection-checkbox">
+              <label className="floorplan-checkbox">
                 <input
                   type="checkbox"
                   checked={activeSource.adjustments.grayscale}
