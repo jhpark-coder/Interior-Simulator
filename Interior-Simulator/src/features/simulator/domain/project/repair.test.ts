@@ -82,6 +82,50 @@ describe("repairProjectRanges", () => {
     expect(repairProjectRanges("x")).toBe("x");
   });
 
+  it("fits a stored floor plan crop inside the image or drops it", () => {
+    const createdAt = "2026-10-23T00:00:00.000Z";
+    const withSource = (crop: { x: number; y: number; width: number; height: number }) => {
+      const value = project();
+      value.assets.push({
+        id: "asset",
+        kind: "floorplan",
+        fileName: "plan.png",
+        mimeType: "image/png",
+        size: 10,
+        createdAt,
+      });
+      value.sources.push({
+        id: "source",
+        fileName: "plan.png",
+        mimeType: "image/png",
+        assetId: "asset",
+        widthPx: 1000,
+        heightPx: 800,
+        opacity: 0.5,
+        visible: true,
+        locked: false,
+        transform: { x: 0, y: 0, rotation: 0, scaleMmPerPixel: null },
+        adjustments: { brightness: 0, contrast: 0, threshold: null, grayscale: false },
+        crop,
+        calibrationAnchors: [],
+      });
+      return value;
+    };
+
+    const valid = withSource({ x: 100, y: 100, width: 500, height: 400 });
+    expect(validateInteriorProject(valid).success).toBe(true);
+
+    const overflowing = withSource({ x: 600, y: 100, width: 600, height: 400 });
+    expect(validateInteriorProject(overflowing).success).toBe(false);
+    const fitted = repairProjectRanges(overflowing) as InteriorProject;
+    expect(validateInteriorProject(fitted).success).toBe(true);
+    expect(fitted.sources[0].crop).toEqual({ x: 600, y: 100, width: 400, height: 400 });
+
+    const outside = repairProjectRanges(withSource({ x: 2000, y: 0, width: 100, height: 100 })) as InteriorProject;
+    expect(validateInteriorProject(outside).success).toBe(true);
+    expect(outside.sources[0]).not.toHaveProperty("crop");
+  });
+
   it("does not invent values for non-numeric fields", () => {
     const broken = project() as unknown as { structureRevisions: Array<{ structure: { walls: Array<Record<string, unknown>> } }> };
     broken.structureRevisions[0].structure.walls[0].thickness = null;

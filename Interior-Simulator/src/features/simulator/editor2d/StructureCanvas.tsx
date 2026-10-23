@@ -7,7 +7,12 @@ import {
   wallLength,
   type Vec2,
 } from "../domain/structure";
-import { imagePointToWorld, worldPointToImage } from "../domain/import";
+import {
+  cropFromCorners,
+  imagePointToWorld,
+  visibleImageRect,
+  worldPointToImage,
+} from "../domain/import";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import { FloorPlanLayer, UNCALIBRATED_MM_PER_PIXEL } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
@@ -64,6 +69,9 @@ export function StructureCanvas() {
   const [draftStart, setDraftStart] = useState<Vec2 | null>(null);
   const [draftEnd, setDraftEnd] = useState<Vec2 | null>(null);
   const [calibrationPoints, setCalibrationPoints] = useState<Vec2[]>([]);
+  const [cropStart, setCropStart] = useState<Vec2 | null>(null);
+  const [cropEnd, setCropEnd] = useState<Vec2 | null>(null);
+  const [cropTooSmall, setCropTooSmall] = useState(false);
 
   const structure = useSimulatorStore((state) => state.structure);
   const detectionCandidates = useSimulatorStore(
@@ -93,12 +101,13 @@ export function StructureCanvas() {
       if (candidate.kind === "wall") return [candidate.start, candidate.end];
       return [candidate.position];
     });
-    const sourcePoints = activeSource
+    const shown = activeSource ? visibleImageRect(activeSource) : null;
+    const sourcePoints = activeSource && shown
       ? [
-          { x: 0, y: 0 },
-          { x: activeSource.widthPx, y: 0 },
-          { x: activeSource.widthPx, y: activeSource.heightPx },
-          { x: 0, y: activeSource.heightPx },
+          { x: shown.x, y: shown.y },
+          { x: shown.x + shown.width, y: shown.y },
+          { x: shown.x + shown.width, y: shown.y + shown.height },
+          { x: shown.x, y: shown.y + shown.height },
         ].map((point) =>
           imagePointToWorld(point, {
             ...activeSource.transform,
@@ -156,6 +165,7 @@ export function StructureCanvas() {
   const addCalibrationAnchor = useSimulatorStore(
     (state) => state.addCalibrationAnchor
   );
+  const setTool = useSimulatorStore((state) => state.setStructureTool);
   const removeWall = useSimulatorStore((state) => state.removeWall);
   const removeOpening = useSimulatorStore(
     (state) => state.removeStructureOpening
@@ -163,10 +173,17 @@ export function StructureCanvas() {
   const undoStructure = useSimulatorStore((state) => state.undoStructure);
   const redoStructure = useSimulatorStore((state) => state.redoStructure);
 
+  const resetCrop = () => {
+    setCropStart(null);
+    setCropEnd(null);
+    setCropTooSmall(false);
+  };
+
   useEffect(() => {
     setDraftStart(null);
     setDraftEnd(null);
     setCalibrationPoints([]);
+    resetCrop();
   }, [tool]);
 
   useEffect(() => {
@@ -191,6 +208,7 @@ export function StructureCanvas() {
         setDraftStart(null);
         setDraftEnd(null);
         setCalibrationPoints([]);
+        resetCrop();
       }
       if (event.key === "Delete" || event.key === "Backspace") {
         if (selected?.kind === "wall") removeWall(selected.id);
@@ -234,6 +252,10 @@ export function StructureCanvas() {
   };
 
   const handlePointerMove = () => {
+    if (tool === "crop" && cropStart) {
+      setCropEnd(pointerWorld());
+      return;
+    }
     if (tool !== "wall" || !draftStart) return;
     const raw = pointerWorld();
     if (!raw) return;
@@ -290,6 +312,30 @@ export function StructureCanvas() {
       return;
     }
 
+    if (tool === "crop" && activeSource) {
+      if (!cropStart) {
+        setCropStart(raw);
+        setCropEnd(raw);
+        setCropTooSmall(false);
+        return;
+      }
+      const crop = cropFromCorners(
+        getImagePixelPoint(cropStart, activeSource.transform),
+        getImagePixelPoint(raw, activeSource.transform),
+        activeSource.widthPx,
+        activeSource.heightPx
+      );
+      if (!crop) {
+        setCropStart(null);
+        setCropEnd(null);
+        setCropTooSmall(true);
+        return;
+      }
+      updateSource(activeSource.id, { crop });
+      setTool("select");
+      return;
+    }
+
     if (tool === "calibrate" && activeSource) {
       const nextPoints = [...calibrationPoints, raw].slice(-2);
       setCalibrationPoints(nextPoints);
@@ -336,6 +382,30 @@ export function StructureCanvas() {
     });
   };
 
+  // 자르기 영역은 이미지 축에 맞는 사각형이다. 평면도를 돌려 놓았으면 화면에서도 돌아간
+  // 사각형이 되므로, 이미지 좌표의 네 모서리를 화면 좌표로 바꿔 그린다.
+  const cropPreview = (() => {
+    if (tool !== "crop" || !cropStart || !cropEnd || !activeSource) return null;
+    const transform = {
+      ...activeSource.transform,
+      scaleMmPerPixel:
+        activeSource.transform.scaleMmPerPixel ?? UNCALIBRATED_MM_PER_PIXEL,
+    };
+    // 실제 자르기처럼 이미지 밖은 잘라 낸 사각형을 보여 준다.
+    const inside = (point: Vec2) => ({
+      x: Math.max(0, Math.min(activeSource.widthPx, point.x)),
+      y: Math.max(0, Math.min(activeSource.heightPx, point.y)),
+    });
+    const a = inside(worldPointToImage(cropStart, transform));
+    const b = inside(worldPointToImage(cropEnd, transform));
+    return [
+      { x: a.x, y: a.y },
+      { x: b.x, y: a.y },
+      { x: b.x, y: b.y },
+      { x: a.x, y: b.y },
+    ].map((point) => imagePointToWorld(point, transform));
+  })();
+
   const activeObjectUrl = activeSource
     ? objectUrls[activeSource.assetId]
     : undefined;
@@ -348,12 +418,18 @@ export function StructureCanvas() {
     if (tool === "calibrate") {
       return `축척 기준점 ${calibrationPoints.length}/2 — 평면도의 치수선 양 끝을 클릭하세요.`;
     }
+    if (tool === "crop") {
+      if (cropTooSmall) return "영역이 너무 작습니다. 남길 영역의 한쪽 모서리를 다시 클릭하세요.";
+      return cropStart
+        ? "반대쪽 모서리를 클릭하세요. Esc로 취소합니다."
+        : "자르기: 평면도에서 남길 영역의 한쪽 모서리를 클릭하세요.";
+    }
     if (tool === "pan") return "캔버스를 드래그해 이동하고 휠로 확대·축소합니다.";
     if (tool === "door" || tool === "window" || tool === "passage") {
       return "문·창문·통로를 달 벽을 클릭하세요.";
     }
     return "벽·방·개구부를 선택해 오른쪽에서 수정합니다.";
-  }, [calibrationPoints.length, draftStart, tool]);
+  }, [calibrationPoints.length, cropStart, cropTooSmall, draftStart, tool]);
 
   return (
     <div className="structure-canvas" ref={containerRef}>
@@ -395,6 +471,7 @@ export function StructureCanvas() {
           source={activeSource}
           objectUrl={activeObjectUrl}
           selected={false}
+          showFullImage={tool === "crop"}
           onSelect={() => undefined}
           onMove={(x, y) => {
             if (!activeSource) return;
@@ -445,6 +522,16 @@ export function StructureCanvas() {
               strokeWidth={2 / viewport.scale}
             />
           ))}
+          {cropPreview && (
+            <Line
+              points={cropPreview.flatMap((point) => [point.x, point.y])}
+              closed
+              stroke="#2563eb"
+              strokeWidth={2 / viewport.scale}
+              dash={[8 / viewport.scale, 6 / viewport.scale]}
+              fill="rgba(37, 99, 235, 0.08)"
+            />
+          )}
           {calibrationPoints.length === 2 && (
             <Line
               points={calibrationPoints.flatMap((point) => [point.x, point.y])}
@@ -452,7 +539,7 @@ export function StructureCanvas() {
               strokeWidth={3 / viewport.scale}
             />
           )}
-          {structure.walls.length === 0 && (
+          {structure.walls.length === 0 && !activeSource?.visible && (
             <Text
               x={0}
               y={0}

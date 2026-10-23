@@ -1,4 +1,4 @@
-import type { FloorPlanSource } from "../domain/import";
+import type { FloorPlanCrop, FloorPlanSource } from "../domain/import";
 import { imagePointToWorld } from "../domain/import";
 import type {
   DetectionCandidate,
@@ -18,24 +18,84 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function analyzeFloorPlanImage(
-  objectUrl: string,
-  options: DetectionOptions
-): Promise<RawDetectionResult> {
-  const image = await loadImage(objectUrl);
-  const maximumDimension = 1800;
-  const scale = Math.min(
-    1,
-    maximumDimension / Math.max(image.naturalWidth, image.naturalHeight)
-  );
-  const width = Math.max(1, Math.round(image.naturalWidth * scale));
-  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+/**
+ * 분석한 이미지(자르기 영역을 width×height로 줄인 것)의 좌표를 원본 이미지 픽셀 좌표로
+ * 되돌린다. 후보를 평면도 위치(mm)로 바꿀 때 원본 기준 변환을 그대로 쓰기 위해서다.
+ */
+export function toSourcePixels(
+  result: RawDetectionResult,
+  region: FloorPlanCrop,
+  analyzed: { width: number; height: number },
+  sourceSize: { width: number; height: number }
+): RawDetectionResult {
+  const scaleX = region.width / analyzed.width;
+  const scaleY = region.height / analyzed.height;
+  const averageScale = (scaleX + scaleY) / 2;
+  const point = (value: { x: number; y: number }) => ({
+    x: region.x + value.x * scaleX,
+    y: region.y + value.y * scaleY,
+  });
+  return {
+    ...result,
+    width: sourceSize.width,
+    height: sourceSize.height,
+    lines: result.lines.map((line) => ({
+      ...line,
+      start: point(line.start),
+      end: point(line.end),
+      thicknessPx: line.thicknessPx * averageScale,
+    })),
+    openings: result.openings.map((opening) => ({
+      ...opening,
+      center: point(opening.center),
+      widthPx: opening.widthPx * averageScale,
+    })),
+    labels: result.labels.map((label) => ({ ...label, center: point(label.center) })),
+  };
+}
+
+/** 원본 이미지의 region 부분을 최대 maximumDimension 크기 캔버스에 그린다. */
+function drawRegion(
+  image: HTMLImageElement,
+  region: FloorPlanCrop,
+  maximumDimension: number
+): HTMLCanvasElement {
+  const scale = Math.min(1, maximumDimension / Math.max(region.width, region.height));
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = Math.max(1, Math.round(region.width * scale));
+  canvas.height = Math.max(1, Math.round(region.height * scale));
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("이미지 분석 캔버스를 만들 수 없습니다.");
-  context.drawImage(image, 0, 0, width, height);
+  context.drawImage(
+    image,
+    region.x,
+    region.y,
+    region.width,
+    region.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+  return canvas;
+}
+
+function fullRegion(image: HTMLImageElement): FloorPlanCrop {
+  return { x: 0, y: 0, width: image.naturalWidth, height: image.naturalHeight };
+}
+
+/** 평면도에서 벽·개구부 후보를 찾는다. crop이 있으면 그 영역만 분석한다. */
+export async function analyzeFloorPlanImage(
+  objectUrl: string,
+  options: DetectionOptions,
+  crop?: FloorPlanCrop
+): Promise<RawDetectionResult> {
+  const image = await loadImage(objectUrl);
+  const region = crop ?? fullRegion(image);
+  const canvas = drawRegion(image, region, 1800);
+  const { width, height } = canvas;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("이미지 분석 캔버스를 만들 수 없습니다.");
   const imageData = context.getImageData(0, 0, width, height);
   const worker = new Worker(
     new URL("./detection.worker.ts", import.meta.url),
@@ -53,36 +113,14 @@ export async function analyzeFloorPlanImage(
       worker.terminate();
       if (event.data.error) reject(new Error(event.data.error));
       else {
-        const result = event.data.result as RawDetectionResult;
-        const sourceScaleX = image.naturalWidth / width;
-        const sourceScaleY = image.naturalHeight / height;
-        resolve({
-          ...result,
-          width: image.naturalWidth,
-          height: image.naturalHeight,
-          lines: result.lines.map((line) => ({
-            ...line,
-            start: {
-              x: line.start.x * sourceScaleX,
-              y: line.start.y * sourceScaleY,
-            },
-            end: {
-              x: line.end.x * sourceScaleX,
-              y: line.end.y * sourceScaleY,
-            },
-            thicknessPx:
-              line.thicknessPx * ((sourceScaleX + sourceScaleY) / 2),
-          })),
-          openings: result.openings.map((opening) => ({
-            ...opening,
-            center: {
-              x: opening.center.x * sourceScaleX,
-              y: opening.center.y * sourceScaleY,
-            },
-            widthPx:
-              opening.widthPx * ((sourceScaleX + sourceScaleY) / 2),
-          })),
-        });
+        resolve(
+          toSourcePixels(
+            event.data.result as RawDetectionResult,
+            region,
+            { width, height },
+            { width: image.naturalWidth, height: image.naturalHeight }
+          )
+        );
       }
     };
     worker.onerror = () => {
@@ -105,10 +143,17 @@ export async function analyzeFloorPlanImage(
   });
 }
 
+/** 평면도의 글자를 읽는다. crop이 있으면 그 영역만 읽고 좌표는 원본 기준으로 돌려준다. */
 export async function recognizeFloorPlanLabels(
   objectUrl: string,
-  onProgress?: (progress: number, status: string) => void
+  onProgress?: (progress: number, status: string) => void,
+  crop?: FloorPlanCrop
 ): Promise<RawDetectionResult["labels"]> {
+  // 잘랐으면 그 영역을 원본 해상도 그대로 캔버스에 옮겨 읽는다(글자가 작아지지 않게).
+  const target = crop
+    ? drawRegion(await loadImage(objectUrl), crop, Number.POSITIVE_INFINITY)
+    : objectUrl;
+  const offset = crop ? { x: crop.x, y: crop.y } : { x: 0, y: 0 };
   const Tesseract = await import("tesseract.js");
   const worker = await Tesseract.createWorker(
     ["kor", "eng"],
@@ -120,7 +165,7 @@ export async function recognizeFloorPlanLabels(
   );
   try {
     const result = await worker.recognize(
-      objectUrl,
+      target,
       {},
       { blocks: true, text: true }
     );
@@ -133,8 +178,8 @@ export async function recognizeFloorPlanLabels(
         id: `label-${index + 1}`,
         text: line.text.replace(/\s+/g, " ").trim(),
         center: {
-          x: (line.bbox.x0 + line.bbox.x1) / 2,
-          y: (line.bbox.y0 + line.bbox.y1) / 2,
+          x: offset.x + (line.bbox.x0 + line.bbox.x1) / 2,
+          y: offset.y + (line.bbox.y0 + line.bbox.y1) / 2,
         },
         confidence: Math.max(0, Math.min(1, line.confidence / 100)),
       }))

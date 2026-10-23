@@ -36,6 +36,14 @@ const FloorPlanSourceSchema = z.object({
     threshold: z.number().min(0).max(255).nullable(),
     grayscale: z.boolean(),
   }),
+  crop: z
+    .object({
+      x: z.number().int().nonnegative(),
+      y: z.number().int().nonnegative(),
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+    })
+    .optional(),
   calibrationAnchors: z.array(CalibrationAnchorSchema),
 });
 
@@ -173,6 +181,17 @@ export const InteriorProjectSchema = z
           code: z.ZodIssueCode.custom,
           message: "Floor plan source references a missing original asset",
           path: ["sources", index, "originalAssetId"],
+        });
+      }
+      if (
+        source.crop &&
+        (source.crop.x + source.crop.width > source.widthPx ||
+          source.crop.y + source.crop.height > source.heightPx)
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Floor plan crop is outside the image",
+          path: ["sources", index, "crop"],
         });
       }
     });
