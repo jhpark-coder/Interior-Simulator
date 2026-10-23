@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { deleteDB } from "idb";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { InteriorProject } from "../../domain/project";
 import { createRectangularStructureFixture } from "../../domain/structure";
 import {
@@ -72,6 +72,18 @@ describe("projectDb", () => {
         updatedAt: project.meta.updatedAt,
       },
     ]);
+  });
+
+  it("commits the project write explicitly so a closing page keeps it", async () => {
+    const commit = vi.spyOn(IDBTransaction.prototype, "commit");
+    try {
+      const project = projectFixture("project-commit");
+      await saveProject(project);
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect(await loadProject(project.id)).toEqual(project);
+    } finally {
+      commit.mockRestore();
+    }
   });
 
   it("stores binary assets separately and deletes them with a project", async () => {
