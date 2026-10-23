@@ -105,6 +105,36 @@ describe("structureSlice", () => {
     });
   });
 
+  it("changes thickness and height of one wall kind at once as a single undo step", () => {
+    state().setStructure(createThreeRoomStructureFixture());
+    useSimulatorStore.setState({ structurePast: [] });
+    const before = state().structure.walls;
+    const interiorCount = before.filter((wall) => wall.kind === "interior").length;
+    expect(interiorCount).toBeGreaterThan(0);
+
+    expect(state().updateWallsBulk("interior", { thickness: 90, height: 2300 })).toBe(interiorCount);
+    for (const wall of state().structure.walls) {
+      const original = before.find((item) => item.id === wall.id)!;
+      if (wall.kind === "interior") {
+        expect(wall).toMatchObject({ thickness: 90, height: 2300 });
+      } else {
+        expect(wall).toMatchObject({ thickness: original.thickness, height: original.height });
+      }
+    }
+    expect(state().structurePast).toHaveLength(1);
+    state().undoStructure();
+    expect(state().structure.walls).toEqual(before);
+  });
+
+  it("clamps bulk values and ignores an empty bulk change", () => {
+    expect(state().updateWallsBulk("all", {})).toBe(0);
+    expect(state().structurePast).toHaveLength(0);
+    expect(state().updateWallsBulk("partition", { thickness: 100 })).toBe(0);
+
+    expect(state().updateWallsBulk("all", { thickness: 5, height: 99999 })).toBe(4);
+    expect(state().structure.walls.every((wall) => wall.thickness === 20 && wall.height === 20000)).toBe(true);
+  });
+
   it("splits a wall and moves openings to the correct new segment", () => {
     state().addStructureOpening({
       id: "window-1",

@@ -48,6 +48,14 @@ export type StructureSliceState = {
     endpoint: WallEndpoint,
     position: Vec2
   ) => void;
+  /**
+   * 대상 종류의 벽 두께·높이를 한꺼번에 바꾼다. 실행 취소 한 번으로 되돌아가며,
+   * 바꾼 벽 수를 돌려준다.
+   */
+  updateWallsBulk: (
+    target: Wall["kind"] | "all",
+    patch: Partial<Pick<Wall, "thickness" | "height">>
+  ) => number;
   /** 시작점을 두고 끝점을 벽 방향으로 옮겨 길이를 맞춘다. 연결된 벽도 따라간다. */
   setWallLength: (id: string, length: number) => boolean;
   splitWall: (id: string, point: Vec2) => boolean;
@@ -276,6 +284,34 @@ export const createStructureSlice: StateCreator<
       structureFuture: [],
       ...issueState(structure),
     });
+  },
+
+  updateWallsBulk: (target, rawPatch) => {
+    const state = get();
+    const patch = withinWallRanges(rawPatch);
+    if (patch.thickness === undefined && patch.height === undefined) return 0;
+    const matches = (wall: Wall) => target === "all" || wall.kind === target;
+    const count = state.structure.walls.filter(matches).length;
+    if (count === 0) return 0;
+    const structure = withRebuiltRooms({
+      ...state.structure,
+      walls: state.structure.walls.map((wall) =>
+        matches(wall)
+          ? {
+              ...wall,
+              ...(patch.thickness !== undefined ? { thickness: patch.thickness } : {}),
+              ...(patch.height !== undefined ? { height: patch.height } : {}),
+            }
+          : wall
+      ),
+    });
+    set({
+      structure,
+      structurePast: pushPast(state),
+      structureFuture: [],
+      ...issueState(structure),
+    });
+    return count;
   },
 
   setWallLength: (id, length) => {

@@ -217,3 +217,12 @@ export function findMisplacedFurniture(
     return result.valid ? [] : [{ id: item.id, reason: result.reason ?? "outside-structure" }];
   });
 }
+
+/** 문·창문·통로를 뺀 실제 벽 구간. 가구 사이 통행 폭이 벽에 막혔는지 볼 때 쓴다. */
+export function solidWallSegments(structure: FloorStructure) {
+  return solidWallIntervals(structure).map((interval) => ({
+    wall: interval.wall,
+    start: pointAlongWall(interval.wall, interval.startOffset),
+    end: pointAlongWall(interval.wall, interval.endOffset),
+  }));
+}

@@ -16,7 +16,10 @@
   cursor: pointer;
 }
 
+/* .memory-panel button 등(클래스+요소)보다 우선해야 흰 배경에 흰 글자가 되지 않는다. */
 .memory-primary,
+.memory-panel .memory-primary,
+.memory-inspector .memory-primary,
 .memory-primary.active {
   border-color: #2563eb;
   background: #2563eb;

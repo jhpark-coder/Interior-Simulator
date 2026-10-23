@@ -13,6 +13,7 @@ import { FloorPlanLayer, UNCALIBRATED_MM_PER_PIXEL } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
 import { DetectionCandidateLayer } from "./DetectionCandidateLayer";
 import { useCanvasSize } from "./useCanvasSize";
+import { defaultOpeningForTool } from "./openingDefaults";
 import "./StructureCanvas.css";
 
 const MIN_SCALE = 0.015;
@@ -267,32 +268,24 @@ export function StructureCanvas() {
       return;
     }
 
-    if (tool === "door" || tool === "window") {
+    if (tool === "door" || tool === "window" || tool === "passage") {
       const nearest = structure.walls
         .map((wall) => ({ wall, projection: projectPointToWall(raw, wall) }))
         .sort((a, b) => a.projection.distance - b.projection.distance)[0];
       if (!nearest || nearest.projection.distance > 24 / viewport.scale) {
         return;
       }
-      const width = tool === "door" ? 900 : 1200;
+      const opening = defaultOpeningForTool(tool);
       addOpening({
-        kind: tool,
+        ...opening,
         wallId: nearest.wall.id,
         offset: Math.max(
           0,
           Math.min(
-            wallLength(nearest.wall) - width,
-            nearest.projection.offset - width / 2
+            wallLength(nearest.wall) - opening.width,
+            nearest.projection.offset - opening.width / 2
           )
         ),
-        width,
-        height: tool === "door" ? 2100 : 1200,
-        sillHeight: tool === "door" ? 0 : 900,
-        doorType: tool === "door" ? "swing" : undefined,
-        hinge: tool === "door" ? "left" : undefined,
-        swing: tool === "door" ? "inward" : undefined,
-        openAngle: tool === "door" ? 90 : undefined,
-        thickness: tool === "door" ? 40 : undefined,
       });
       return;
     }
@@ -356,6 +349,9 @@ export function StructureCanvas() {
       return `축척 기준점 ${calibrationPoints.length}/2 — 평면도의 치수선 양 끝을 클릭하세요.`;
     }
     if (tool === "pan") return "캔버스를 드래그해 이동하고 휠로 확대·축소합니다.";
+    if (tool === "door" || tool === "window" || tool === "passage") {
+      return "문·창문·통로를 달 벽을 클릭하세요.";
+    }
     return "벽·방·개구부를 선택해 오른쪽에서 수정합니다.";
   }, [calibrationPoints.length, draftStart, tool]);
 

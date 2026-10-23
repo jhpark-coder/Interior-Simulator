@@ -25,6 +25,7 @@ const TOOLS: Array<{ id: StructureTool; icon: string; label: string }> = [
   { id: "wall", icon: "╱", label: "벽" },
   { id: "door", icon: "🚪", label: "문" },
   { id: "window", icon: "▣", label: "창문" },
+  { id: "passage", icon: "⇄", label: "통로" },
   { id: "calibrate", icon: "📏", label: "축척" },
 ];
 
@@ -289,6 +290,76 @@ export function StructureToolPanel() {
                 }
               />
             </label>
+            <label>
+              밝기 {Math.round(activeSource.adjustments.brightness * 100)}
+              <input
+                type="range"
+                min="-1"
+                max="1"
+                step="0.05"
+                value={activeSource.adjustments.brightness}
+                onChange={(event) =>
+                  updateSource(activeSource.id, {
+                    adjustments: {
+                      ...activeSource.adjustments,
+                      brightness: Number(event.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label>
+              대비 {Math.round(activeSource.adjustments.contrast * 100)}
+              <input
+                type="range"
+                min="-1"
+                max="1"
+                step="0.05"
+                value={activeSource.adjustments.contrast}
+                onChange={(event) =>
+                  updateSource(activeSource.id, {
+                    adjustments: {
+                      ...activeSource.adjustments,
+                      contrast: Number(event.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <div className="structure-inline-actions">
+              <label className="floorplan-checkbox">
+                <input
+                  type="checkbox"
+                  checked={activeSource.adjustments.grayscale}
+                  onChange={(event) =>
+                    updateSource(activeSource.id, {
+                      adjustments: {
+                        ...activeSource.adjustments,
+                        grayscale: event.target.checked,
+                      },
+                    })
+                  }
+                />
+                흑백
+              </label>
+              <button
+                onClick={() =>
+                  updateSource(activeSource.id, {
+                    adjustments: {
+                      ...activeSource.adjustments,
+                      brightness: 0,
+                      contrast: 0,
+                      grayscale: false,
+                    },
+                  })
+                }
+              >
+                보정 초기화
+              </button>
+            </div>
+            <p className="floorplan-adjust-note">
+              밝기·대비·흑백은 화면 표시용입니다. 자동 인식은 원본 이미지를 씁니다.
+            </p>
             <label>
               회전
               <input

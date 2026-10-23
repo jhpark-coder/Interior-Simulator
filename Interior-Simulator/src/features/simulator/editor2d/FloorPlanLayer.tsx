@@ -1,5 +1,6 @@
+import { useEffect, useRef } from "react";
 import { Image as KonvaImage, Layer } from "react-konva";
-import type Konva from "konva";
+import Konva from "konva";
 import type { FloorPlanSource } from "../domain/import";
 import { useFloorPlanImage } from "../floorplan/useFloorPlanImage";
 
@@ -21,6 +22,23 @@ export function FloorPlanLayer({
   onMove,
 }: FloorPlanLayerProps) {
   const image = useFloorPlanImage(objectUrl);
+  const imageRef = useRef<Konva.Image>(null);
+  const brightness = source?.adjustments.brightness ?? 0;
+  const contrast = source?.adjustments.contrast ?? 0;
+  const grayscale = source?.adjustments.grayscale ?? false;
+  const adjusted = brightness !== 0 || contrast !== 0 || grayscale;
+  const visible = !!source && source.visible && !!image;
+
+  // Konva 필터는 캐시된 비트맵에 적용된다. 원본 해상도(pixelRatio 1)로 캐시하고,
+  // 보정이 없으면 캐시를 지워 메모리를 쓰지 않는다.
+  useEffect(() => {
+    const node = imageRef.current;
+    if (!node) return;
+    if (adjusted) node.cache({ pixelRatio: 1 });
+    else node.clearCache();
+    node.getLayer()?.batchDraw();
+  }, [adjusted, brightness, contrast, grayscale, image, visible]);
+
   if (!source || !source.visible || !image) return null;
   const imageScale =
     source.transform.scaleMmPerPixel ?? UNCALIBRATED_MM_PER_PIXEL;
@@ -32,7 +50,20 @@ export function FloorPlanLayer({
   return (
     <Layer listening={!source.locked}>
       <KonvaImage
+        ref={imageRef}
         image={image}
+        filters={
+          adjusted
+            ? [
+                ...(grayscale ? [Konva.Filters.Grayscale] : []),
+                Konva.Filters.Brighten,
+                Konva.Filters.Contrast,
+              ]
+            : []
+        }
+        brightness={brightness}
+        // 저장값은 -1~1, Konva Contrast는 -100~100이다.
+        contrast={contrast * 100}
         x={source.transform.x}
         y={source.transform.y}
         width={source.widthPx}

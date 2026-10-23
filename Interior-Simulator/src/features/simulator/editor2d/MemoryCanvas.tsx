@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Circle, Group, Layer, Stage, Text } from "react-konva";
+import { Circle, Group, Layer, Stage, Text, Wedge } from "react-konva";
 import type Konva from "konva";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import {
+  CAMERA_FOV_DEGREES,
+  cameraWedgeRotation,
+  showsCameraDirection,
+} from "../domain/memory";
 import { getStructureBounds } from "../scene3d/structure3dMath";
 import { FloorPlanLayer } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
@@ -168,6 +173,17 @@ export function MemoryCanvas() {
                   })
                 }
               >
+                {showsCameraDirection(pin, selected) && (
+                  <Wedge
+                    radius={radius * 4}
+                    angle={CAMERA_FOV_DEGREES}
+                    rotation={cameraWedgeRotation(pin.cameraDirection ?? 0)}
+                    fill={selected ? "rgba(249, 115, 22, 0.28)" : "rgba(37, 99, 235, 0.22)"}
+                    stroke={selected ? "#f97316" : "#2563eb"}
+                    strokeWidth={1.5 / viewport.scale}
+                    listening={false}
+                  />
+                )}
                 <Circle
                   radius={radius}
                   fill={selected ? "#f97316" : "#2563eb"}

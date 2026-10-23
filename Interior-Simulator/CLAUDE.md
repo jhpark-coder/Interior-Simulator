@@ -47,8 +47,11 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 
 ### Domain
 
-- `domain/structure/`: 다중 벽·방·개구부와 기하/검증
-- `domain/project/`: `InteriorProject` v2.0.0와 Zod 참조 무결성
+- `domain/structure/`: 다중 벽·방·개구부와 기하/검증. 두께·높이·너비 등 수치 범위는
+  `limits.ts` 한 곳에 두고 스키마·store·입력칸이 같이 쓴다
+- `domain/project/`: `InteriorProject` v2.0.0와 Zod 참조 무결성. `repair.ts`의
+  `repairProjectRanges`는 이전 버전이 범위 밖 값으로 저장한 프로젝트를 검증 전에 고친다
+  (자동 복원·로컬 열기·패키지 가져오기)
 - `domain/scenario/`: 가구·마감재 배치안
 - `domain/memory/`: 기록 핀과 3D 시점
 - `domain/import/`: 평면도 좌표 변환과 축척
@@ -91,6 +94,9 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 - `utils/doorClearance.ts`, `hooks/useFurnitureReview.ts`: 문짝을 0.5°(미닫이는 10mm)씩
   움직여 가구와 닿는지 계산한다. 배치 검토 패널, 2D 막힌 문 표시, 3D 문 개폐 한계가 같은
   결과를 쓴다
+- `editor2d/openingDefaults.ts`: 문·창문·통로 도구의 기본 치수
+- `utils/walkway.ts`, `editor2d/WalkwayLayer.tsx`: 가구 배치의 `통행 폭` 표시. 가구–가구,
+  가구–벽면 틈 중 150mm 이상 900mm 미만을 표시하고 사이에 벽이 있으면 뺀다
 - `editor2d/useCanvasSize.ts`: 2D 캔버스는 처음 측정할 때와 구조가 바뀔 때만 화면을 맞춘다.
   인스펙터가 길어져 캔버스가 커져도 사용자가 보던 확대·이동을 유지한다
 - `scene3d/StructureScene3D.tsx`: Orbit/Walk, 저장 시점, 충돌

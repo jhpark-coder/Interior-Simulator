@@ -182,3 +182,20 @@ export function getOpeningMeshPlacement(
 export function directionToRotationY(direction: { x: number; y: number }): number {
   return Math.atan2(-direction.y, direction.x);
 }
+
+/** 3D 기록 핀 구슬의 높이(mm). 1인칭 눈높이와 같다. */
+export const MEMORY_PIN_EYE_HEIGHT = 1600;
+
+/**
+ * 기록 핀의 촬영 방향 원뿔 배치. 그룹을 방향으로 돌리고, +Y로 서 있는 원뿔을 +X로
+ * 눕혀 구슬 앞쪽에 둔다. 원뿔 끝이 2D 방향 (x, y)를 3D (x, 0, y)로 가리킨다.
+ */
+export function memoryPinConeTransform(direction: { x: number; y: number }) {
+  const length = 300;
+  return {
+    groupRotationY: directionToRotationY(direction),
+    position: [120 + length / 2, 0, 0] as [number, number, number],
+    rotation: [0, 0, -Math.PI / 2] as [number, number, number],
+    length,
+  };
+}
