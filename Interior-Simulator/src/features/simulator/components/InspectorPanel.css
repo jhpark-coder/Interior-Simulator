@@ -93,6 +93,10 @@
   gap: 8px;
 }
 
+.inspector-rotate-actions.inspector-item-actions {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .inspector-rotate-actions button {
   border: 1px solid var(--panel-border);
   border-radius: 10px;

@@ -11,6 +11,7 @@ import { MemoryCanvas } from "./editor2d/MemoryCanvas";
 import { MemoryPanel } from "./components/memory/MemoryPanel";
 import { MemoryInspector } from "./components/memory/MemoryInspector";
 import { ScenarioMaterialPanel } from "./components/scenario/ScenarioMaterialPanel";
+import { PlacementReviewPanel } from "./components/scenario/PlacementReviewPanel";
 import { useSimulatorStore } from "./store/useSimulatorStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useAutoSave } from "./hooks/useAutoSave";
@@ -141,6 +142,7 @@ export function SimulatorPage() {
           <aside className="sim-panel sim-right">
             {workspaceMode === "scenario" ? (
               <>
+                <PlacementReviewPanel />
                 <InspectorPanel />
                 <ScenarioMaterialPanel />
               </>

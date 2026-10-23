@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useSimulatorStore } from "./useSimulatorStore";
+import {
+  FURNITURE_DUPLICATE_NO_SPACE_ERROR,
+  FURNITURE_LOCKED_ERROR,
+} from "./slices/furnitureSlice";
+import { checkCollisionWithOthers, validateFurnitureInStructure } from "../utils";
 import { DEFAULT_ROOM, FURNITURE_CATALOG } from "../constants";
 import type { FurnitureType } from "../types";
 import {
@@ -420,5 +425,104 @@ describe("roomSlice", () => {
     expect(gs().selectedEntity).toEqual({ kind: "furniture", id });
     gs().clearSelection();
     expect(gs().selectedEntity).toBeNull();
+  });
+});
+
+// ─── Furniture duplicate & lock ─────────────────────────────────────────────
+
+describe("furniture duplicate and lock", () => {
+  beforeEach(resetStore);
+
+  function placeBed() {
+    gs().setStructure(createApartment84StructureFixture(), false);
+    gs().setPendingFurniture("bed", { name: "싱글 침대", width: 1000, depth: 2000 });
+    gs().commitPendingFurniture();
+    expect(gs().furniture).toHaveLength(1);
+    return gs().furniture[0];
+  }
+
+  it("duplicates into a nearby free spot inside the structure and selects the copy", () => {
+    const source = placeBed();
+    const copyId = gs().duplicateFurniture(source.id);
+
+    expect(copyId).not.toBeNull();
+    expect(gs().furniture).toHaveLength(2);
+    const copy = gs().furniture.find((item) => item.id === copyId)!;
+    expect(copy.id).not.toBe(source.id);
+    expect({ ...copy, id: source.id, x: source.x, y: source.y }).toEqual(source);
+    expect(Math.hypot(copy.x - source.x, copy.y - source.y)).toBeGreaterThan(0);
+    expect(checkCollisionWithOthers(copy, gs().furniture, new Set())).toBe(false);
+    expect(validateFurnitureInStructure(copy, gs().structure).valid).toBe(true);
+    expect(gs().selectedEntity).toEqual({ kind: "furniture", id: copyId });
+    expect(gs().validationErrors).toEqual([]);
+
+    gs().undo();
+    expect(gs().furniture.map((item) => item.id)).toEqual([source.id]);
+  });
+
+  it("does not copy the lock or the attachment of the source", () => {
+    const source = placeBed();
+    gs().setFurnitureLocked(source.id, true);
+    const copyId = gs().duplicateFurniture(source.id)!;
+    const copy = gs().furniture.find((item) => item.id === copyId)!;
+    expect(copy.locked).toBe(false);
+    expect(copy.parentId).toBeUndefined();
+    expect(gs().furniture.find((item) => item.id === source.id)!.locked).toBe(true);
+  });
+
+  it("skips spots outside the walls when duplicating from a corner", () => {
+    // 오른쪽 아래 구석의 가구는 바로 옆 자리 대부분이 벽 바깥이다.
+    gs().addFurniture("custom", { x: 3800, y: 2800, width: 1000, depth: 1000 });
+    const [source] = gs().furniture;
+    const copyId = gs().duplicateFurniture(source.id)!;
+    const copy = gs().furniture.find((item) => item.id === copyId)!;
+    expect(validateFurnitureInStructure(copy, gs().structure).valid).toBe(true);
+    expect(checkCollisionWithOthers(copy, gs().furniture, new Set())).toBe(false);
+  });
+
+  it("reports when there is no free spot for the copy", () => {
+    // 5000×4000 방을 거의 채우는 가구는 주변 어디에 복제해도 벽을 넘는다.
+    gs().addFurniture("custom", { x: 100, y: 100, width: 4800, depth: 3800 });
+    const [source] = gs().furniture;
+    expect(gs().duplicateFurniture(source.id)).toBeNull();
+    expect(gs().furniture).toHaveLength(1);
+    expect(gs().validationErrors).toEqual([FURNITURE_DUPLICATE_NO_SPACE_ERROR]);
+  });
+
+  it("keeps locked furniture from being removed or moved into placement mode", () => {
+    const source = placeBed();
+    gs().setFurnitureLocked(source.id, true);
+
+    gs().removeFurniture(source.id);
+    expect(gs().furniture).toHaveLength(1);
+    expect(gs().validationErrors).toEqual([FURNITURE_LOCKED_ERROR]);
+
+    gs().startPlacementForFurniture(source.id);
+    expect(gs().placingFurnitureId).toBeNull();
+
+    gs().setFurnitureLocked(source.id, false);
+    gs().removeFurniture(source.id);
+    expect(gs().furniture).toHaveLength(0);
+  });
+
+  it("does not remove a parent whose attached item is locked", () => {
+    gs().addFurniture("desk", { x: 1000, y: 1000 });
+    const [desk] = gs().furniture;
+    gs().addFurniture("monitor-arm", { x: 1100, y: 1100, parentId: desk.id });
+    const arm = gs().furniture.find((item) => item.type === "monitor-arm")!;
+    gs().setFurnitureLocked(arm.id, true);
+
+    gs().removeFurniture(desk.id);
+    expect(gs().furniture).toHaveLength(2);
+    expect(gs().validationErrors).toEqual([FURNITURE_LOCKED_ERROR]);
+  });
+
+  it("ends placement mode when the placing item gets locked", () => {
+    const source = placeBed();
+    gs().startPlacementForFurniture(source.id);
+    expect(gs().placingFurnitureId).toBe(source.id);
+    gs().setFurnitureLocked(source.id, true);
+    expect(gs().placingFurnitureId).toBeNull();
+    expect(gs().placingFurniture).toBeNull();
   });
 });
