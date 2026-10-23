@@ -301,6 +301,96 @@ function OpeningInspector({ opening }: { opening: Opening }) {
   );
 }
 
+const WALL_TARGET_LABELS = {
+  all: "모든 벽",
+  exterior: "외벽",
+  interior: "내벽",
+  partition: "가벽",
+} as const;
+
+/** 벽 종류별 두께·높이 일괄 변경. 빈 칸은 그대로 둔다. */
+function BulkWallEditor() {
+  const updateWallsBulk = useSimulatorStore((state) => state.updateWallsBulk);
+  const [target, setTarget] = useState<keyof typeof WALL_TARGET_LABELS>("all");
+  const [thickness, setThickness] = useState("");
+  const [height, setHeight] = useState("");
+  const [message, setMessage] = useState("");
+
+  const parse = (text: string, range: { min: number; max: number }, label: string) => {
+    if (text.trim() === "") return { value: undefined };
+    const value = Number(text);
+    if (!Number.isFinite(value) || value < range.min || value > range.max) {
+      return { error: `${label}는 ${range.min}~${range.max}mm로 입력하세요.` };
+    }
+    return { value };
+  };
+
+  const apply = () => {
+    const nextThickness = parse(thickness, WALL_THICKNESS_RANGE, "두께");
+    const nextHeight = parse(height, WALL_HEIGHT_RANGE, "높이");
+    const error = nextThickness.error ?? nextHeight.error;
+    if (error) {
+      setMessage(error);
+      return;
+    }
+    if (nextThickness.value === undefined && nextHeight.value === undefined) {
+      setMessage("바꿀 두께나 높이를 입력하세요.");
+      return;
+    }
+    const count = updateWallsBulk(target, {
+      thickness: nextThickness.value,
+      height: nextHeight.value,
+    });
+    setMessage(
+      count > 0
+        ? `${WALL_TARGET_LABELS[target]} ${count}개에 적용했습니다.`
+        : `${WALL_TARGET_LABELS[target]}이 없습니다.`
+    );
+  };
+
+  return (
+    <details className="structure-section structure-details">
+      <summary>벽 일괄 변경</summary>
+      <div className="structure-control-stack">
+        <SelectField
+          label="대상"
+          value={target}
+          options={(Object.keys(WALL_TARGET_LABELS) as Array<keyof typeof WALL_TARGET_LABELS>).map(
+            (value) => ({ value, label: WALL_TARGET_LABELS[value] })
+          )}
+          onChange={setTarget}
+        />
+        <label className="structure-field">
+          <span>두께 (mm)</span>
+          <input
+            type="number"
+            placeholder="그대로"
+            min={WALL_THICKNESS_RANGE.min}
+            max={WALL_THICKNESS_RANGE.max}
+            value={thickness}
+            onChange={(event) => setThickness(event.target.value)}
+          />
+        </label>
+        <label className="structure-field">
+          <span>높이 (mm)</span>
+          <input
+            type="number"
+            placeholder="그대로"
+            min={WALL_HEIGHT_RANGE.min}
+            max={WALL_HEIGHT_RANGE.max}
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+          />
+        </label>
+        <button type="button" onClick={apply}>
+          적용
+        </button>
+        {message && <p className="structure-readonly">{message}</p>}
+      </div>
+    </details>
+  );
+}
+
 function RoomInspector({ room }: { room: RoomRegion }) {
   const update = useSimulatorStore((state) => state.updateStructureRoom);
   return (
@@ -392,6 +482,8 @@ export function StructureInspector() {
           캔버스에서 벽, 방, 문 또는 창문을 선택하세요.
         </div>
       )}
+
+      <BulkWallEditor />
 
       <section className="structure-section">
         <div className="structure-section-heading">
