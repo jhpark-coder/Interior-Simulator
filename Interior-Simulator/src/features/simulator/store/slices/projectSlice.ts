@@ -313,7 +313,12 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       activeScenarioId: id,
       furniture: target.furniture.map((item) => ({ ...item })),
       activeMaterials: target.materials.map((item) => ({ ...item })),
-      structure: revision ? structuredClone(revision.structure) : state.structure,
+      ...(revision
+        ? {
+            structure: structuredClone(revision.structure),
+            structureIssues: validateStructure(revision.structure),
+          }
+        : {}),
       activeStructureRevisionId: revision?.id ?? state.activeStructureRevisionId,
       historyPast: [],
       historyFuture: [],
@@ -451,6 +456,7 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       floorPlanObjectUrls: {},
       activeFloorPlanSourceId: project.sources[0]?.id ?? null,
       structure: structuredClone(revision.structure),
+      structureIssues: validateStructure(revision.structure),
       furniture: scenario.furniture.map((item) => ({ ...item })),
       activeMaterials: scenario.materials.map((item) => ({ ...item })),
       memoryPins: structuredClone(project.memoryPins),

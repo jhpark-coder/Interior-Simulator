@@ -15,6 +15,7 @@ import {
   inferCategoryFromType,
   validateFurnitureInStructure,
   defaultFurnitureCenter,
+  type FurnitureFootprint,
 } from "../../utils";
 import { createId } from "../createId";
 import { pushSnapshotFromState } from "./historySlice";
@@ -44,12 +45,17 @@ function placementError(
 
 function defaultCenter(
   structure: SimulatorState["structure"],
-  room: Room
+  room: Room,
+  footprint?: FurnitureFootprint
 ) {
-  return defaultFurnitureCenter(structure, {
-    x: room.width / 2,
-    y: room.height / 2,
-  });
+  return defaultFurnitureCenter(
+    structure,
+    {
+      x: room.width / 2,
+      y: room.height / 2,
+    },
+    footprint
+  );
 }
 
 function createFurnitureItem(
@@ -116,7 +122,8 @@ export const createFurnitureSlice: StateCreator<
     const width = preset?.width ?? template.width;
     const depth = preset?.depth ?? template.depth;
     const height = preset?.height ?? template.height;
-    const center = defaultCenter(structure, room);
+    const rotation = preset?.rotation ?? 0;
+    const center = defaultCenter(structure, room, { width, depth, rotation });
     const baseX = center.x - width / 2;
     const baseY = center.y - depth / 2;
     const category = preset?.category ?? inferCategoryFromType(type);
@@ -131,7 +138,7 @@ export const createFurnitureSlice: StateCreator<
         width,
         depth,
         height,
-        rotation: preset?.rotation ?? 0,
+        rotation,
         color: preset?.color ?? DEFAULT_FURNITURE_COLOR,
         zIndex: 0,
         locked: preset?.locked ?? false,

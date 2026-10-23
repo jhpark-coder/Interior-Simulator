@@ -9,7 +9,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     // Agent worktrees under .claude/ hold full repo copies; never collect them.
-    exclude: [...configDefaults.exclude, ".claude/**"],
+    // e2e/ specs run under Playwright, not Vitest.
+    exclude: [...configDefaults.exclude, ".claude/**", "e2e/**"],
   },
   resolve: {
     alias: {
