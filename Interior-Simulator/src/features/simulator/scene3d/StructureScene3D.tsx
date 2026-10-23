@@ -7,6 +7,8 @@ import {
 } from "@react-three/drei";
 import { Vector3, type PerspectiveCamera } from "three";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+// drei의 preset="apartment"와 같은 파일(CC0). 외부 CDN 없이 오프라인에서도 3D를 띄우기 위해 번들한다.
+import apartmentHdrUrl from "./assets/lebombo_1k.hdr?url";
 import { FurnitureMesh } from "./FurnitureMesh";
 import { StructureMesh } from "./StructureMesh";
 import { getStructureBounds } from "./structure3dMath";
@@ -274,7 +276,7 @@ export function StructureScene3D({
         />
         <color attach="background" args={["#f1ece4"]} />
         <fog attach="fog" args={["#f1ece4", maxDimension * 1.5, far * 0.7]} />
-        <Environment preset="apartment" />
+        <Environment files={apartmentHdrUrl} />
         <ambientLight intensity={0.38} color="#fff4ea" />
         <hemisphereLight args={["#fff7ef", "#baa793", 0.52]} />
         <directionalLight
