@@ -35,7 +35,7 @@ Use TypeScript with strict compiler settings (`tsconfig.json` has `"strict": tru
 - Indentation: 2 spaces.
 - Formatting: Prettier (`.prettierrc`) with semicolons, double quotes, trailing commas (`es5`), width 100.
 - Linting: ESLint with React, React Hooks, and TypeScript rules.
-- Naming: React components in `PascalCase` (`Canvas2D.tsx`), hooks in `useCamelCase` (`useAutoSave.ts`), utilities in lower camel/specific domain names (`geometry2d.ts`, `openings.ts`).
+- Naming: React components in `PascalCase` (`StructureCanvas.tsx`), hooks in `useCamelCase` (`useAutoSave.ts`), utilities in lower camel/specific domain names (`geometry2d.ts`, `openings.ts`).
 
 ## Testing Guidelines
 
