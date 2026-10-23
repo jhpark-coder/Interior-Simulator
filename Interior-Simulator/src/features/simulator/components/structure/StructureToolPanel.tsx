@@ -25,6 +25,7 @@ const TOOLS: Array<{ id: StructureTool; icon: string; label: string }> = [
   { id: "wall", icon: "╱", label: "벽" },
   { id: "door", icon: "🚪", label: "문" },
   { id: "window", icon: "▣", label: "창문" },
+  { id: "passage", icon: "⇄", label: "통로" },
   { id: "calibrate", icon: "📏", label: "축척" },
 ];
 

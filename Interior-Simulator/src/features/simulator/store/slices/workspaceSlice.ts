@@ -8,6 +8,7 @@ export type StructureTool =
   | "wall"
   | "door"
   | "window"
+  | "passage"
   | "calibrate"
   | "memory-pin";
 
