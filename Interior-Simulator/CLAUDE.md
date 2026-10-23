@@ -84,7 +84,12 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 - `editor2d/StructureCanvas.tsx`: 구조 추적·축척·편집
 - `editor2d/ScenarioCanvas.tsx`: 구조 위 가구와 재질 배치
 - `editor2d/MemoryCanvas.tsx`: 기록 핀 편집
-- `scene3d/StructureMesh.tsx`: 벽·방·개구부 기반 구조 메시
+- `scene3d/StructureMesh.tsx`: 벽·방·개구부 기반 구조 메시, 문·창문 클릭 개폐
+- `domain/structure/doorGeometry.ts`: 문 경첩·열리는 쪽·미닫이 방향. 2D와 3D가 함께 쓴다.
+  `inward`는 문이 있는 벽에서 방 쪽이다(구형 LayoutDoc과 같은 뜻). 양쪽이 모두 방이면
+  벽 진행 방향의 왼쪽이다
+- `editor2d/useCanvasSize.ts`: 2D 캔버스는 처음 측정할 때와 구조가 바뀔 때만 화면을 맞춘다.
+  인스펙터가 길어져 캔버스가 커져도 사용자가 보던 확대·이동을 유지한다
 - `scene3d/StructureScene3D.tsx`: Orbit/Walk, 저장 시점, 충돌
 
 ## Testing
