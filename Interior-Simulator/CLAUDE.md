@@ -54,7 +54,9 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
   (자동 복원·로컬 열기·패키지 가져오기)
 - `domain/scenario/`: 가구·마감재 배치안
 - `domain/memory/`: 기록 핀과 3D 시점
-- `domain/import/`: 평면도 좌표 변환과 축척
+- `domain/import/`: 평면도 좌표 변환과 축척. `crop.ts`의 자르기 영역은 원본 이미지 픽셀
+  좌표이며 원본·축척 기준점·transform은 바꾸지 않는다. 화면(`editor2d/FloorPlanLayer.tsx`)과
+  자동 인식(`floorplan/detectionClient.ts`의 `toSourcePixels`)이 같은 영역을 쓴다
 
 모든 실제 치수는 mm를 사용한다. 2D의 `{x, y}`는 3D에서 `{x, z}`로 대응한다.
 
