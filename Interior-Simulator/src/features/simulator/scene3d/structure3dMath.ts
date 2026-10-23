@@ -174,3 +174,11 @@ export function getOpeningMeshPlacement(
     wallThickness: wall.thickness,
   };
 }
+
+/**
+ * 2D 평면의 방향(x, y)을 3D 그룹의 Y축 회전으로 바꾼다. 회전한 그룹의 로컬 +X가
+ * 3D의 (x, 0, y)를 향한다. 벽 메시의 rotationY(-wallAngle)와 같은 규칙이다.
+ */
+export function directionToRotationY(direction: { x: number; y: number }): number {
+  return Math.atan2(-direction.y, direction.x);
+}

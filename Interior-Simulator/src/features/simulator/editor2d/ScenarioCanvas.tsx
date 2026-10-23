@@ -7,12 +7,15 @@ import { FurnitureLayer } from "../components/FurnitureLayer";
 import { SnapToggle } from "../components/shell/SnapToggle";
 import { FloorPlanLayer } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
+import { useCanvasSize } from "./useCanvasSize";
 import "./StructureCanvas.css";
 
 export function ScenarioCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
-  const [size, setSize] = useState({ width: 900, height: 650 });
+  const { size, measured } = useCanvasSize(containerRef);
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
   const [viewport, setViewport] = useState({ x: 70, y: 70, scale: 0.08 });
 
   const structure = useSimulatorStore((state) => state.structure);
@@ -55,19 +58,6 @@ export function ScenarioCanvas() {
   const bounds = getStructureBounds(structure);
 
   useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) =>
-      setSize({
-        width: Math.max(320, entry.contentRect.width),
-        height: Math.max(420, entry.contentRect.height),
-      })
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
     const width = Math.max(1000, bounds.maxX, bounds.width);
     const height = Math.max(1000, bounds.maxY, bounds.height);
     if (room.width !== width || room.height !== height) {
@@ -84,8 +74,11 @@ export function ScenarioCanvas() {
     structure.ceilingHeight,
   ]);
 
+  // 처음 실제 크기를 읽을 때와 구조가 바뀔 때만 맞춘다. 이후 크기 변화(인스펙터가
+  // 길어져 캔버스가 늘어나는 경우 등)에는 사용자의 확대·이동을 유지한다.
   useEffect(() => {
     const padding = 70;
+    const size = sizeRef.current;
     const scale = Math.max(
       0.02,
       Math.min(
@@ -104,9 +97,8 @@ export function ScenarioCanvas() {
     bounds.minX,
     bounds.minY,
     bounds.width,
-    size.height,
-    size.width,
     structure.id,
+    measured,
   ]);
 
   const handleWheel = (event: Konva.KonvaEventObject<WheelEvent>) => {

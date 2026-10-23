@@ -12,6 +12,7 @@ import { useSimulatorStore } from "../store/useSimulatorStore";
 import { FloorPlanLayer, UNCALIBRATED_MM_PER_PIXEL } from "./FloorPlanLayer";
 import { StructureLayer } from "./StructureLayer";
 import { DetectionCandidateLayer } from "./DetectionCandidateLayer";
+import { useCanvasSize } from "./useCanvasSize";
 import "./StructureCanvas.css";
 
 const MIN_SCALE = 0.015;
@@ -57,7 +58,7 @@ function getImagePixelPoint(
 export function StructureCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
-  const [size, setSize] = useState({ width: 900, height: 650 });
+  const { size, measured } = useCanvasSize(containerRef);
   const [viewport, setViewport] = useState({ x: 80, y: 80, scale: 0.08 });
   const [draftStart, setDraftStart] = useState<Vec2 | null>(null);
   const [draftEnd, setDraftEnd] = useState<Vec2 | null>(null);
@@ -162,19 +163,6 @@ export function StructureCanvas() {
   const redoStructure = useSimulatorStore((state) => state.redoStructure);
 
   useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setSize({
-        width: Math.max(320, entry.contentRect.width),
-        height: Math.max(420, entry.contentRect.height),
-      });
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
     setDraftStart(null);
     setDraftEnd(null);
     setCalibrationPoints([]);
@@ -182,10 +170,11 @@ export function StructureCanvas() {
 
   useEffect(() => {
     fitStructure();
-    // A different structure or a resized canvas needs a fresh fit. Individual
-    // wall edits keep the user's current zoom and pan.
+    // A different structure or the first real canvas size needs a fresh fit.
+    // Wall edits and later resizes (the inspector growing after a wall is
+    // drawn) keep the user's current zoom and pan so drawing is not interrupted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structure.id, size.width, size.height]);
+  }, [structure.id, measured]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { Euler, Vector3 } from "three";
 import {
   createLShapedStructureFixture,
   createRectangularStructureFixture,
+  doorLeafDirection,
+  doorSwingArc,
+  doorSwingGeometry,
+  type Opening,
 } from "../domain/structure";
 import {
   buildStructureWallSegments,
+  directionToRotationY,
   getOpeningMeshPlacement,
   getStructureBounds,
 } from "./structure3dMath";
@@ -79,5 +85,45 @@ describe("structure3dMath", () => {
       1400,
       1400,
     ]);
+  });
+});
+
+describe("directionToRotationY", () => {
+  it.each([
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 0, y: -1 },
+    { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+  ])("turns local +X toward 2D direction (%o) as 3D (x, 0, y)", (direction) => {
+    const local = new Vector3(1, 0, 0).applyEuler(
+      new Euler(0, directionToRotationY(direction), 0)
+    );
+    expect(local.x).toBeCloseTo(direction.x, 9);
+    expect(local.y).toBeCloseTo(0, 9);
+    expect(local.z).toBeCloseTo(direction.y, 9);
+  });
+
+  it("puts an opened 3D door leaf where the 2D swing arc ends", () => {
+    const structure = createRectangularStructureFixture();
+    const wall = structure.walls[0];
+    const door: Opening = {
+      id: "door",
+      kind: "door",
+      wallId: wall.id,
+      offset: 1000,
+      width: 900,
+      height: 2100,
+      sillHeight: 0,
+      openAngle: 75,
+      source: { origin: "manual", confirmedByUser: true },
+    };
+    const geometry = doorSwingGeometry(door, wall, structure);
+    const leafTip = new Vector3(geometry.radius, 0, 0)
+      .applyEuler(new Euler(0, directionToRotationY(doorLeafDirection(geometry, 75)), 0))
+      .add(new Vector3(geometry.hinge.x, 0, geometry.hinge.y));
+    const arcEnd = doorSwingArc(geometry).at(-1)!;
+    expect(leafTip.x).toBeCloseTo(arcEnd.x, 6);
+    expect(leafTip.z).toBeCloseTo(arcEnd.y, 6);
   });
 });
