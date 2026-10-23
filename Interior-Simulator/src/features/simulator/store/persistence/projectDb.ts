@@ -61,12 +61,17 @@ function database() {
 
 export async function saveProject(project: InteriorProject): Promise<void> {
   const db = await database();
-  await db.put("projects", {
+  const transaction = db.transaction("projects", "readwrite");
+  const request = transaction.store.put({
     id: project.id,
     name: project.name,
     updatedAt: project.meta.updatedAt,
     project,
   });
+  // 요청을 보내자마자 커밋한다. 자동 커밋은 이벤트 루프가 한 번 더 돌아야 해서,
+  // 창을 닫는 중(pagehide)에 시작한 저장은 페이지가 먼저 사라지면 버려진다.
+  if (typeof transaction.commit === "function") transaction.commit();
+  await Promise.all([request, transaction.done]);
 }
 
 export async function loadProject(projectId: string): Promise<InteriorProject | null> {

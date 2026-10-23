@@ -37,6 +37,9 @@ export function useAutoSave() {
   const setObjectUrlRef = useRef(setObjectUrl);
   setObjectUrlRef.current = setObjectUrl;
 
+  // 복원 전에 저장하면 마지막 프로젝트 대신 빈 기본 프로젝트가 저장된다.
+  const restoredRef = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     const restore = async () => {
@@ -82,6 +85,9 @@ export function useAutoSave() {
         }
       } catch (error) {
         console.error("Failed to load auto-save:", error);
+      } finally {
+        // StrictMode에서 취소된 첫 실행이 두 번째 복원보다 먼저 끝날 수 있다.
+        if (!cancelled) restoredRef.current = true;
       }
     };
     void restore();
@@ -91,15 +97,17 @@ export function useAutoSave() {
   }, []);
 
   useEffect(() => {
+    const saveSnapshot = async () => {
+      const project = snapshotRef.current();
+      await saveProject(project);
+      claimLastProjectIfUnset(project.id);
+    };
+
     let saving = false;
     const interval = setInterval(() => {
-      if (saving) return;
+      if (saving || !restoredRef.current) return;
       saving = true;
-      const project = snapshotRef.current();
-      saveProject(project)
-        .then(() => {
-          claimLastProjectIfUnset(project.id);
-        })
+      saveSnapshot()
         .catch((error) => {
           console.error("Failed to auto-save:", error);
         })
@@ -108,6 +116,25 @@ export function useAutoSave() {
         });
     }, AUTO_SAVE_INTERVAL);
 
-    return () => clearInterval(interval);
+    // 탭을 닫거나 다른 앱으로 넘어갈 때는 다음 주기나 진행 중인 저장을 기다리지 않고
+    // 바로 쓴다. IndexedDB는 같은 저장소의 쓰기 트랜잭션을 만든 순서대로 처리하므로
+    // 이 최신 스냅샷이 마지막으로 남는다.
+    const saveNow = () => {
+      if (!restoredRef.current) return;
+      saveSnapshot().catch((error) => {
+        console.error("Failed to save before leaving the page:", error);
+      });
+    };
+    const saveWhenHidden = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    document.addEventListener("visibilitychange", saveWhenHidden);
+    window.addEventListener("pagehide", saveNow);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+      window.removeEventListener("pagehide", saveNow);
+    };
   }, []);
 }
