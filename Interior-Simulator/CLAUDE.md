@@ -72,7 +72,9 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 - 평면도·사진·썸네일: IndexedDB `assets`
 - 전체 백업: `.interior-project` ZIP (`project.json` + `assets/`)
 - 구형 호환: LayoutDoc v1.1/v1.2를 `migrations/layoutV1ToProjectV2.ts`로 변환
-- 자동 저장: 5초 간격이며 프로젝트 전환 전에도 현재 스냅샷을 저장
+- 자동 저장: 5초 간격이며 프로젝트 전환 전과 탭 숨김(`visibilitychange`)·닫힘(`pagehide`)
+  때도 현재 스냅샷을 저장. 닫히는 중에도 쓰기가 남도록 `saveProject`는 트랜잭션을
+  명시적으로 `commit()`한다
 
 `Ctrl/Cmd + S`와 `더보기 → 백업 파일로 내보내기`는 전체 프로젝트 패키지를 사용한다.
 `더보기 → 호환 JSON`은 구형 호환용이며 전체 백업이 아니다.
