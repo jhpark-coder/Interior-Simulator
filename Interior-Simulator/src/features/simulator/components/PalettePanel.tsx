@@ -1,20 +1,12 @@
 import "./PalettePanel.css";
 import { useState, useMemo, useEffect } from "react";
 import { searchItems, CATEGORY_LABELS } from "../constants";
-import type { CustomItemDefinition, FurnitureType, ItemCategory, ItemDefinition, WallSide } from "../types";
+import type { CustomItemDefinition, FurnitureType, ItemCategory, ItemDefinition } from "../types";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import { FURNITURE_CATALOG } from "../constants";
+import { getFlowStepTarget } from "./shell/workspaceFlow";
 
 const CUSTOM_ITEMS_KEY = "interior-simulator-custom-items";
-
-const wallSides: WallSide[] = ["north", "east", "south", "west"];
-
-const wallLabels: Record<WallSide, string> = {
-  north: "북",
-  east: "동",
-  south: "남",
-  west: "서",
-};
 
 const categoryOptions: { value: ItemCategory; label: string }[] = [
   { value: "furniture", label: "가구" },
@@ -71,7 +63,6 @@ function saveCustomItems(items: CustomItemDefinition[]) {
 }
 
 export function PalettePanel() {
-  const [selectedWall, setSelectedWall] = useState<WallSide>("north");
   const [searchQuery, setSearchQuery] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<CustomItemDefinition[]>(loadCustomItems);
@@ -89,8 +80,10 @@ export function PalettePanel() {
   const [formInnerHeight, setFormInnerHeight] = useState("");
 
   const setPendingFurniture = useSimulatorStore((state) => state.setPendingFurniture);
-  const setPendingDoor = useSimulatorStore((state) => state.setPendingDoor);
-  const setPendingWindow = useSimulatorStore((state) => state.setPendingWindow);
+  const viewMode = useSimulatorStore((state) => state.viewMode);
+  const setViewMode = useSimulatorStore((state) => state.setViewMode);
+  const setWorkspaceMode = useSimulatorStore((state) => state.setWorkspaceMode);
+  const setStructureTool = useSimulatorStore((state) => state.setStructureTool);
 
   // Persist custom items
   useEffect(() => {
@@ -600,63 +593,18 @@ export function PalettePanel() {
       <div style={{ marginTop: "2rem" }}>
         <p className="panel-kicker">개구부</p>
         <h2 className="panel-title">문 & 창문</h2>
-        <p className="panel-subtitle">벽을 선택하고 추가하세요</p>
-      </div>
-
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", marginBottom: "0.5rem" }}>
-          <span style={{ fontWeight: 500 }}>벽:</span>
-        </label>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {wallSides.map((wall) => (
-            <button
-              key={wall}
-              onClick={() => setSelectedWall(wall)}
-              style={{
-                padding: "0.5rem 0.75rem",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                background: selectedWall === wall ? "#4A90E2" : "white",
-                color: selectedWall === wall ? "white" : "#333",
-                cursor: "pointer",
-              }}
-            >
-              {wallLabels[wall]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <p className="panel-subtitle">
+          문과 창문은 1단계 집 구조에서 벽 위에 추가하고 종류·열리는 쪽을 고칩니다.
+        </p>
         <button
-          onClick={() => setPendingDoor(selectedWall)}
-          style={{
-            flex: 1,
-            padding: "0.75rem",
-            background: "#654321",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: 500,
+          onClick={() => {
+            const target = getFlowStepTarget("structure", viewMode);
+            setWorkspaceMode(target.workspaceMode);
+            setViewMode(target.viewMode);
+            setStructureTool("door");
           }}
         >
-          문 선택
-        </button>
-        <button
-          onClick={() => setPendingWindow(selectedWall)}
-          style={{
-            flex: 1,
-            padding: "0.75rem",
-            background: "#4682B4",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: 500,
-          }}
-        >
-          창문 선택
+          집 구조에서 문·창문 편집
         </button>
       </div>
     </div>
