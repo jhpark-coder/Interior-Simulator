@@ -6,6 +6,11 @@ dist/
 build/
 coverage/
 
+# Playwright outputs
+test-results/
+playwright-report/
+blob-report/
+
 # Environment
 .env
 .env.*
