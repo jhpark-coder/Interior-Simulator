@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage } from "react-konva";
 import type Konva from "konva";
 import { useSimulatorStore } from "../store/useSimulatorStore";
 import { getStructureBounds } from "../scene3d/structure3dMath";
-import { findMisplacedFurniture } from "../utils";
+import { useFurnitureReview } from "../hooks/useFurnitureReview";
 import { FurnitureLayer } from "../components/FurnitureLayer";
 import { SnapToggle } from "../components/shell/SnapToggle";
 import { FloorPlanLayer } from "./FloorPlanLayer";
@@ -57,10 +57,7 @@ export function ScenarioCanvas() {
   const activeSource =
     sources.find((source) => source.id === activeSourceId) ?? null;
   const bounds = getStructureBounds(structure);
-  const misplacedIds = useMemo(
-    () => new Set(findMisplacedFurniture(furniture, structure).map((item) => item.id)),
-    [furniture, structure]
-  );
+  const { flaggedIds, blockedOpeningIds } = useFurnitureReview();
 
   useEffect(() => {
     const width = Math.max(1000, bounds.maxX, bounds.width);
@@ -185,6 +182,7 @@ export function ScenarioCanvas() {
           onSelect={() => undefined}
           onMoveEndpoint={() => undefined}
           onMoveOpening={() => undefined}
+          blockedOpeningIds={blockedOpeningIds}
         />
         <FurnitureLayer
           furniture={furniture}
@@ -198,7 +196,7 @@ export function ScenarioCanvas() {
           onUpdate={updateFurniture}
           onUpdatePending={updatePending}
           onUpdatePlacing={updatePlacing}
-          misplacedIds={misplacedIds}
+          flaggedIds={flaggedIds}
         />
       </Stage>
     </div>

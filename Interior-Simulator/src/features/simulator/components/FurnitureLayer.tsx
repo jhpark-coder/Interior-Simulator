@@ -20,8 +20,8 @@ type FurnitureLayerProps = {
   onUpdate: (id: string, patch: Partial<FurnitureItem>) => void;
   onUpdatePending: (patch: Partial<PendingFurniture>) => void;
   onUpdatePlacing: (patch: Partial<PendingFurniture>) => void;
-  /** 현재 구조에서 벽 밖·벽 관통인 가구 id (빨간 점선으로 표시). */
-  misplacedIds?: ReadonlySet<string>;
+  /** 배치 검토가 필요한 가구 id (벽 밖·벽 관통·문 열림 방해). 빨간 점선으로 표시한다. */
+  flaggedIds?: ReadonlySet<string>;
 };
 
 type FurnitureItemProps = {
@@ -29,7 +29,7 @@ type FurnitureItemProps = {
   room: Room;
   allFurniture: FurnitureItem[];
   isSelected: boolean;
-  isMisplaced?: boolean;
+  isFlagged?: boolean;
   isPlacementEnabled?: boolean;
   onSelect: (id: string) => void;
   onStartPlacement: (id: string) => void;
@@ -44,7 +44,7 @@ type PendingFurnitureItemProps = {
 };
 
 const DEFAULT_FURNITURE_STROKE = "#a8a8a8";
-const MISPLACED_FURNITURE_STROKE = "#dc2626";
+const FLAGGED_FURNITURE_STROKE = "#dc2626";
 
 // Helper function to adjust color brightness
 const adjustColor = (color: string, amount: number) => {
@@ -409,7 +409,7 @@ export function FurnitureLayer({
   onUpdate,
   onUpdatePending,
   onUpdatePlacing,
-  misplacedIds,
+  flaggedIds,
 }: FurnitureLayerProps) {
   return (
     <Layer>
@@ -446,7 +446,7 @@ export function FurnitureLayer({
           isSelected={
             selectedEntity?.kind === "furniture" && selectedEntity.id === item.id
           }
-          isMisplaced={misplacedIds?.has(item.id) ?? false}
+          isFlagged={flaggedIds?.has(item.id) ?? false}
           isPlacementEnabled={false}
           onSelect={onSelect}
           onStartPlacement={onStartPlacement}
@@ -478,7 +478,7 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
   room,
   allFurniture,
   isSelected,
-  isMisplaced = false,
+  isFlagged = false,
   isPlacementEnabled = false,
   onSelect,
   onStartPlacement,
@@ -604,16 +604,16 @@ const FurnitureItemNode = memo(function FurnitureItemNode({
         stroke={
           isSelected
             ? "#4A90E2"
-            : isMisplaced
-              ? MISPLACED_FURNITURE_STROKE
+            : isFlagged
+              ? FLAGGED_FURNITURE_STROKE
               : item.parentId
                 ? "#e67e22"
                 : DEFAULT_FURNITURE_STROKE
         }
-        strokeWidth={isSelected ? 4 : isMisplaced ? Math.max(4, badgeSize * 0.3) : item.parentId ? 3 : 2}
+        strokeWidth={isSelected ? 4 : isFlagged ? Math.max(4, badgeSize * 0.3) : item.parentId ? 3 : 2}
         cornerRadius={4}
         dash={
-          isMisplaced && !isSelected
+          isFlagged && !isSelected
             ? [badgeSize, badgeSize * 0.6]
             : item.parentId && !isSelected
               ? [8, 4]

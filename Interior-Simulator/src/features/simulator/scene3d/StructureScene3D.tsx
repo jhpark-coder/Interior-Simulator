@@ -7,6 +7,7 @@ import {
 } from "@react-three/drei";
 import { Vector3, type PerspectiveCamera } from "three";
 import { useSimulatorStore } from "../store/useSimulatorStore";
+import { useFurnitureReview } from "../hooks/useFurnitureReview";
 // drei의 preset="apartment"와 같은 파일(CC0). 외부 CDN 없이 오프라인에서도 3D를 띄우기 위해 번들한다.
 import apartmentHdrUrl from "./assets/lebombo_1k.hdr?url";
 import { FurnitureMesh } from "./FurnitureMesh";
@@ -211,6 +212,7 @@ export function StructureScene3D({
   const furniture = useSimulatorStore((state) => state.furniture);
   const navigationMode = useSimulatorStore((state) => state.navigationMode);
   const activeMaterials = useSimulatorStore((state) => state.activeMaterials);
+  const { clearFractionByOpening } = useFurnitureReview();
   const viewpoints = useSimulatorStore((state) => state.savedViewpoints);
   const activeViewpointId = useSimulatorStore(
     (state) => state.activeViewpointId
@@ -299,6 +301,7 @@ export function StructureScene3D({
         <StructureMesh
           structure={structure}
           materials={showScenarioMaterials ? activeMaterials : []}
+          clearFractionByOpening={clearFractionByOpening}
         />
         {furniture.map((item) => (
           <FurnitureMesh key={item.id} item={item} />

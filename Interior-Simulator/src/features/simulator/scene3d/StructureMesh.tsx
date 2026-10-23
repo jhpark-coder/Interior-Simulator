@@ -58,18 +58,21 @@ function SwingDoorMesh({
   wall,
   structure,
   color,
+  clearFraction,
 }: {
   opening: Opening;
   wall: Wall;
   structure: FloorStructure;
   color: string;
+  clearFraction: number;
 }) {
   const leafRef = useRef<Group>(null);
   const angleRef = useRef(0);
   const [open, setOpen] = useState(false);
   const geometry = doorSwingGeometry(opening, wall, structure);
   const { thickness } = resolvedDoorDetails(opening);
-  const target = open ? geometry.openAngle : 0;
+  // 가구에 막히면 닿기 직전 각도까지만 연다.
+  const target = open ? geometry.openAngle * clearFraction : 0;
 
   const applyAngle = (angle: number) => {
     const direction = doorLeafDirection(geometry, angle);
@@ -116,11 +119,13 @@ function SlidingDoorMesh({
   wall,
   structure,
   color,
+  clearFraction,
 }: {
   opening: Opening;
   wall: Wall;
   structure: FloorStructure;
   color: string;
+  clearFraction: number;
 }) {
   const panelRef = useRef<Group>(null);
   const progressRef = useRef(0);
@@ -132,7 +137,7 @@ function SlidingDoorMesh({
   // 문짝은 방 쪽 벽면에 붙어 벽을 따라 미끄러진다.
   const faceOffset = wall.thickness / 2 + thickness / 2 + 4;
   const travel = opening.width * 0.9;
-  const target = open ? 1 : 0;
+  const target = open ? clearFraction : 0;
 
   const applyProgress = (progress: number) => {
     panelRef.current?.position.set(
@@ -246,11 +251,13 @@ function OpeningMesh({
   wall,
   structure,
   materials,
+  clearFraction,
 }: {
   opening: Opening;
   wall: Wall;
   structure: FloorStructure;
   materials: MaterialAssignment[];
+  clearFraction: number;
 }) {
   if (opening.kind === "passage") return null;
   const surface = opening.kind === "door" ? "door" : "window";
@@ -264,18 +271,33 @@ function OpeningMesh({
     return <SlidingWindowMesh opening={opening} wall={wall} color={color} />;
   }
   return resolvedDoorDetails(opening).doorType === "sliding" ? (
-    <SlidingDoorMesh opening={opening} wall={wall} structure={structure} color={color} />
+    <SlidingDoorMesh
+      opening={opening}
+      wall={wall}
+      structure={structure}
+      color={color}
+      clearFraction={clearFraction}
+    />
   ) : (
-    <SwingDoorMesh opening={opening} wall={wall} structure={structure} color={color} />
+    <SwingDoorMesh
+      opening={opening}
+      wall={wall}
+      structure={structure}
+      color={color}
+      clearFraction={clearFraction}
+    />
   );
 }
 
 export function StructureMesh({
   structure,
   materials = [],
+  clearFractionByOpening,
 }: {
   structure: FloorStructure;
   materials?: MaterialAssignment[];
+  /** 문 id → 가구에 닿기 전까지 열 수 있는 비율. 없으면 끝까지 연다. */
+  clearFractionByOpening?: ReadonlyMap<string, number>;
 }) {
   const segments = useMemo(
     () => buildStructureWallSegments(structure),
@@ -366,6 +388,7 @@ export function StructureMesh({
             wall={wall}
             structure={structure}
             materials={materials}
+            clearFraction={clearFractionByOpening?.get(opening.id) ?? 1}
           />
         ) : null;
       })}

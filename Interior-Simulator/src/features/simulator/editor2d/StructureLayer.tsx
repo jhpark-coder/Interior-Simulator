@@ -37,7 +37,11 @@ type StructureLayerProps = {
     point: Vec2
   ) => void;
   onMoveOpening: (openingId: string, offset: number) => void;
+  /** 가구에 막혀 끝까지 열리지 않는 문 id. 문짝과 열림 범위를 빨갛게 표시한다. */
+  blockedOpeningIds?: ReadonlySet<string>;
 };
+
+const BLOCKED_DOOR_COLOR = "#dc2626";
 
 function roomPoints(polygon: Vec2[]): number[] {
   return polygon.flatMap((point) => [point.x, point.y]);
@@ -210,6 +214,7 @@ function OpeningNode({
   wall,
   structure,
   selected,
+  blocked,
   scale,
   onSelect,
   onMove,
@@ -218,6 +223,7 @@ function OpeningNode({
   wall: Wall;
   structure: FloorStructure;
   selected: boolean;
+  blocked: boolean;
   scale: number;
   onSelect: () => void;
   onMove: (offset: number) => void;
@@ -266,7 +272,7 @@ function OpeningNode({
           structure={structure}
           center={center}
           scale={scale}
-          color={color}
+          color={blocked ? BLOCKED_DOOR_COLOR : color}
         />
       )}
       <Line
@@ -301,6 +307,7 @@ export function StructureLayer({
   onSelect,
   onMoveEndpoint,
   onMoveOpening,
+  blockedOpeningIds,
 }: StructureLayerProps) {
   const materialColor = (
     targetId: string,
@@ -368,6 +375,7 @@ export function StructureLayer({
             opening={opening}
             wall={wall}
             structure={structure}
+            blocked={blockedOpeningIds?.has(opening.id) ?? false}
             scale={scale}
             selected={
               selected?.kind === "structure-opening" &&
