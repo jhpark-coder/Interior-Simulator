@@ -159,7 +159,7 @@ function getTuckHeight(item: FurnitureItem): number {
 /**
  * SAT collision check between two sets of corners.
  */
-function checkCornersCollision(
+export function checkCornersCollision(
   corners1: { x: number; y: number }[],
   corners2: { x: number; y: number }[],
 ): boolean {

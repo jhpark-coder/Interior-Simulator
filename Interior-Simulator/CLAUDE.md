@@ -88,6 +88,9 @@ UI는 `components/shell/workspaceFlow.ts`의 3단계 스텝으로 노출한다.
 - `domain/structure/doorGeometry.ts`: 문 경첩·열리는 쪽·미닫이 방향. 2D와 3D가 함께 쓴다.
   `inward`는 문이 있는 벽에서 방 쪽이다(구형 LayoutDoc과 같은 뜻). 양쪽이 모두 방이면
   벽 진행 방향의 왼쪽이다
+- `utils/doorClearance.ts`, `hooks/useFurnitureReview.ts`: 문짝을 0.5°(미닫이는 10mm)씩
+  움직여 가구와 닿는지 계산한다. 배치 검토 패널, 2D 막힌 문 표시, 3D 문 개폐 한계가 같은
+  결과를 쓴다
 - `editor2d/useCanvasSize.ts`: 2D 캔버스는 처음 측정할 때와 구조가 바뀔 때만 화면을 맞춘다.
   인스펙터가 길어져 캔버스가 커져도 사용자가 보던 확대·이동을 유지한다
 - `scene3d/StructureScene3D.tsx`: Orbit/Walk, 저장 시점, 충돌
