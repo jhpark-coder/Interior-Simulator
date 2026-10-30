@@ -115,6 +115,12 @@ E2E는 `e2e/*.spec.ts`에 두고 Playwright로 실행한다. Vitest는 `e2e/`를
 코드 변경 후 최소 `npm run lint`, `npm run test:run`, `npm run build`를 실행한다. 화면 흐름을
 바꿨다면 `npm run test:e2e`도 실행한다.
 
+CI는 저장소 루트의 `.github/workflows/ci.yml`이다. `main` 푸시와 PR에서 `npm ci
+--legacy-peer-deps`로 새로 설치해 lint·단위 테스트·빌드 job과 E2E job을 따로 돌린다. 새로 설치하면
+선택 peer인 `@types/node`가 없으므로, tsconfig의 `lib`(ES2020)에 없는 API(`Array.prototype.at`
+등)는 로컬에서 통과해도 CI 빌드에서 실패한다. CI에서는 Playwright가 실패한 테스트를 한 번
+재시도한다.
+
 ## Documentation
 
 - 사용자 실행과 현재 기능: `README.md`

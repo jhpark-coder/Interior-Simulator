@@ -124,7 +124,8 @@ describe("directionToRotationY", () => {
     const leafTip = new Vector3(geometry.radius, 0, 0)
       .applyEuler(new Euler(0, directionToRotationY(doorLeafDirection(geometry, 75)), 0))
       .add(new Vector3(geometry.hinge.x, 0, geometry.hinge.y));
-    const arcEnd = doorSwingArc(geometry).at(-1)!;
+    const arc = doorSwingArc(geometry);
+    const arcEnd = arc[arc.length - 1];
     expect(leafTip.x).toBeCloseTo(arcEnd.x, 6);
     expect(leafTip.z).toBeCloseTo(arcEnd.y, 6);
   });

@@ -1,0 +1,75 @@
+name: CI
+
+# 앱은 저장소의 Interior-Simulator/ 아래에 있다. 계획 문서만 바뀐 커밋에서는 돌지 않는다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Interior-Simulator/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "Interior-Simulator/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+# PR에 새 커밋이 오면 이전 실행을 취소한다. main은 커밋마다 끝까지 돈다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: Interior-Simulator
+
+jobs:
+  check:
+    name: Lint · 단위 테스트 · 빌드
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Interior-Simulator/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npm run test:run
+      - run: npm run build
+
+  e2e:
+    name: E2E (Playwright · Chromium)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Interior-Simulator/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      # playwright.config.ts가 production 빌드를 띄워 실행한다. CI에서는 실패한 테스트를
+      # 한 번 다시 돌리고, 재시도로 통과한 테스트는 보고서에 flaky로 남는다.
+      - run: npm run test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            Interior-Simulator/playwright-report/
+            Interior-Simulator/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
