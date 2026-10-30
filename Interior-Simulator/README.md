@@ -1,5 +1,7 @@
 # Interior Simulator
 
+[![CI](https://github.com/jhpark-coder/interior-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/jhpark-coder/interior-simulator/actions/workflows/ci.yml)
+
 평면도 이미지를 바탕으로 집 구조를 만들고, 가구 배치와 3D 공간을 비교하며,
 사진·메모를 위치와 함께 기록하는 로컬 우선 웹 애플리케이션입니다.
 
@@ -87,6 +89,10 @@ npx playwright install chromium
 
 브라우저를 내려받을 수 없는 환경에서는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`에 설치된
 Chromium 경로를 지정합니다.
+
+GitHub Actions(`.github/workflows/ci.yml`)가 `main` 푸시와 PR마다 `npm ci --legacy-peer-deps`로
+새로 설치한 뒤 lint·단위 테스트·빌드와 E2E를 실행합니다. E2E가 실패하면 실행 화면의
+`playwright-report` 아티팩트에서 보고서·스크린샷·trace를 내려받을 수 있습니다.
 
 ## 사용 순서
 
