@@ -9,6 +9,7 @@ import {
   saveProjectAsset,
 } from "../../store/persistence/projectDb";
 import { toSafeAssetBlob } from "../../store/persistence/safeAssetBlob";
+import { saveProjectFromThisTab } from "../../store/persistence/tabSync";
 import { saveActiveProjectBeforeTransition } from "../../store/persistence/projectTransition";
 import { MoreMenu } from "../shell/MoreMenu";
 import {
@@ -158,21 +159,33 @@ export function ProjectToolbar() {
           return;
         }
       }
-      setStatus("현재 프로젝트 저장 중…");
-      await saveActiveProjectBeforeTransition();
-      Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
-      importProject(imported.project);
-      for (const asset of imported.project.assets) {
+      // 파일이 빠진 백업은 열지 않는다. 열고 나면 그 프로젝트는 다시 내보낼 수 없게 된다.
+      const blobs = imported.project.assets.map((asset) => {
         const bytes = imported.assets.get(asset.id);
-        if (!bytes) continue;
+        if (!bytes) {
+          throw new Error(`백업 파일에 "${asset.fileName}" 파일이 없어 열 수 없습니다.`);
+        }
         // 백업 파일에 적힌 형식은 믿지 않는다. 실행될 수 있는 형식(HTML·SVG 등)은 막는다.
         const blob = toSafeAssetBlob(
           new Blob([bytesToArrayBuffer(bytes)], { type: asset.mimeType })
         );
-        await saveProjectAsset(imported.project.id, asset.id, blob);
-        setObjectUrl(asset.id, URL.createObjectURL(blob));
+        return { id: asset.id, blob };
+      });
+      setStatus("현재 프로젝트 저장 중…");
+      await saveActiveProjectBeforeTransition();
+      // 파일과 프로젝트를 모두 저장한 뒤에만 화면을 바꾼다. 중간에 실패하면(저장 공간 부족 등)
+      // 화면은 지금 프로젝트 그대로 남고, 반쯤 가져온 프로젝트가 열리지 않는다.
+      setStatus("백업 파일 저장 중…");
+      for (const { id, blob } of blobs) {
+        await saveProjectAsset(imported.project.id, id, blob);
       }
-      await saveProject(imported.project);
+      // 덮어쓰기는 사용자가 확인했으므로 강제로 저장하고, 같은 프로젝트를 연 다른 탭에 알린다.
+      await saveProjectFromThisTab(imported.project, { force: true });
+      Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
+      importProject(imported.project);
+      for (const { id, blob } of blobs) {
+        setObjectUrl(id, URL.createObjectURL(blob));
+      }
       localStorage.setItem("interior-simulator-last-project", imported.project.id);
       await refreshProjects();
       setStatus("프로젝트 가져오기 완료");

@@ -15,8 +15,11 @@ export function exportLegacyLayoutFile(): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = `layout-${Date.now()}.json`;
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  // 클릭 직후 바로 놓아주면 일부 브라우저에서 다운로드가 취소된다. 다른 내보내기와 같이 늦춘다.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function importLegacyLayoutFile(

@@ -97,19 +97,20 @@ export function StructureToolPanel() {
       return;
     }
 
+    // 렌더링·저장을 기다리는 동안 다른 프로젝트로 바뀌면, 결과를 새 프로젝트에 붙이지 않고 버린다.
+    const startedProjectId = projectId;
+    const stillSameProject = () =>
+      useSimulatorStore.getState().projectId === startedProjectId;
+    const savedAssetIds: string[] = [];
+    const discardSavedAssets = async () => {
+      await Promise.all(
+        savedAssetIds.map((id) => deleteProjectAsset(startedProjectId, id).catch(() => undefined))
+      );
+    };
+
     if (file.type === "application/pdf") {
       try {
-        const originalAssetId = `floorplan-pdf-${Date.now()}-${file.size}`;
-        await saveProjectAsset(projectId, originalAssetId, file);
-        registerAsset({
-          id: originalAssetId,
-          kind: "floorplan",
-          fileName: file.name,
-          mimeType: file.type,
-          size: file.size,
-          createdAt: new Date().toISOString(),
-        });
-
+        // 렌더링이 성공한 뒤에만 저장·등록한다. 먼저 저장하면 손상된 PDF가 고아 파일로 남는다.
         let rendered = await renderPdfFloorPlanPage(file, 1);
         if (rendered.pageCount > 1) {
           const entered = window.prompt(
@@ -121,8 +122,27 @@ export function StructureToolPanel() {
             rendered = await renderPdfFloorPlanPage(file, requestedPage);
           }
         }
+        if (!stillSameProject()) return;
+
+        const originalAssetId = `floorplan-pdf-${Date.now()}-${file.size}`;
         const renderedAssetId = `floorplan-page-${Date.now()}-${rendered.pageNumber}`;
-        await saveProjectAsset(projectId, renderedAssetId, rendered.blob);
+        await saveProjectAsset(startedProjectId, originalAssetId, file);
+        savedAssetIds.push(originalAssetId);
+        await saveProjectAsset(startedProjectId, renderedAssetId, rendered.blob);
+        savedAssetIds.push(renderedAssetId);
+        if (!stillSameProject()) {
+          await discardSavedAssets();
+          return;
+        }
+
+        registerAsset({
+          id: originalAssetId,
+          kind: "floorplan",
+          fileName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          createdAt: new Date().toISOString(),
+        });
         registerAsset({
           id: renderedAssetId,
           kind: "floorplan",
@@ -143,6 +163,7 @@ export function StructureToolPanel() {
           objectUrl,
         });
       } catch (error) {
+        await discardSavedAssets();
         window.alert(
           error instanceof Error ? error.message : "PDF 평면도를 불러오지 못했습니다."
         );
@@ -153,8 +174,18 @@ export function StructureToolPanel() {
     const objectUrl = URL.createObjectURL(file);
     try {
       const image = await loadImage(objectUrl);
+      if (!stillSameProject()) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
       const assetId = `floorplan-${Date.now()}-${file.size}`;
-      await saveProjectAsset(projectId, assetId, file);
+      await saveProjectAsset(startedProjectId, assetId, file);
+      savedAssetIds.push(assetId);
+      if (!stillSameProject()) {
+        URL.revokeObjectURL(objectUrl);
+        await discardSavedAssets();
+        return;
+      }
       registerAsset({
         id: assetId,
         kind: "floorplan",
@@ -173,6 +204,7 @@ export function StructureToolPanel() {
       });
     } catch (error) {
       URL.revokeObjectURL(objectUrl);
+      await discardSavedAssets();
       window.alert(error instanceof Error ? error.message : "평면도를 불러오지 못했습니다.");
     }
   };
@@ -184,6 +216,17 @@ export function StructureToolPanel() {
       failDetection("분석할 평면도 원본을 불러오지 못했습니다.");
       return;
     }
+    // OCR은 수십 초 걸린다. 그동안 다른 프로젝트·평면도로 바뀌면 끝난 결과를 버린다.
+    // 그러지 않으면 이전 평면도의 벽 후보가 새 프로젝트에 뜬다.
+    const startedProjectId = projectId;
+    const startedSourceId = activeSource.id;
+    const stillSameTarget = () => {
+      const current = useSimulatorStore.getState();
+      return (
+        current.projectId === startedProjectId &&
+        current.activeFloorPlanSourceId === startedSourceId
+      );
+    };
     beginDetection();
     setDetectionProgress("벽 선분을 찾는 중");
     try {
@@ -204,6 +247,15 @@ export function StructureToolPanel() {
         );
         result = { ...result, labels };
       }
+      if (!stillSameTarget()) {
+        setDetectionProgress("");
+        // 프로젝트가 바뀌었으면 새 프로젝트가 인식 상태를 이미 초기화했다.
+        // 같은 프로젝트에서 평면도만 바뀌었으면 "진행 중"에 멈추지 않게 알린다.
+        if (useSimulatorStore.getState().projectId === startedProjectId) {
+          failDetection("인식 중에 평면도가 바뀌어 결과를 버렸습니다. 다시 실행해 주세요.");
+        }
+        return;
+      }
       const candidates = rawResultToCandidates(result, activeSource);
       setDetectionResult(candidates, {
         sourceId: activeSource.id,
@@ -217,12 +269,13 @@ export function StructureToolPanel() {
       });
       setDetectionProgress("");
     } catch (error) {
+      setDetectionProgress("");
+      if (!stillSameTarget()) return;
       failDetection(
         error instanceof Error
           ? error.message
           : "평면도 자동 인식에 실패했습니다."
       );
-      setDetectionProgress("");
     }
   };
 

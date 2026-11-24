@@ -1,10 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useSimulatorStore } from "../store/useSimulatorStore";
-import {
-  loadProject,
-  loadProjectAsset,
-  saveProject,
-} from "../store/persistence/projectDb";
+import { loadProject, loadProjectAsset } from "../store/persistence/projectDb";
+import { saveProjectFromThisTab } from "../store/persistence/tabSync";
 import { repairProjectRanges, validateInteriorProject } from "../domain/project";
 import { migrateLegacyLayoutToProject } from "../store/migrations/layoutV1ToProjectV2";
 import { validateLayoutDoc } from "../utils/zodSchemas";
@@ -99,8 +96,9 @@ export function useAutoSave() {
   useEffect(() => {
     const saveSnapshot = async () => {
       const project = snapshotRef.current();
-      await saveProject(project);
-      claimLastProjectIfUnset(project.id);
+      // 다른 탭이 더 최신으로 저장한 프로젝트는 덮어쓰지 않고, 바뀐 게 없으면 저장하지 않는다.
+      const result = await saveProjectFromThisTab(project, { onlyIfChanged: true });
+      if (result === "saved") claimLastProjectIfUnset(project.id);
     };
 
     let saving = false;

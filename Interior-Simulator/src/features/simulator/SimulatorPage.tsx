@@ -17,6 +17,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { ErrorBoundary } from "../../shared/ui/ErrorBoundary";
 import { WorkspaceStepper } from "./components/shell/WorkspaceStepper";
+import { StaleTabBanner } from "./components/shell/StaleTabBanner";
 import { getWorkspaceTitle } from "./components/shell/workspaceFlow";
 
 function SceneLoading() {
@@ -132,6 +133,7 @@ export function SimulatorPage() {
         </div>
       </header>
       <ProjectToolbar />
+      <StaleTabBanner />
       <div className="sim-body" data-view={viewMode}>
         <aside className="sim-panel sim-left">
           {workspaceMode === "scenario" ? (

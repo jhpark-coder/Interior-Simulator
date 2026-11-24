@@ -65,13 +65,30 @@ function WalkControls() {
   const side = useMemo(() => new Vector3(), []);
 
   useEffect(() => {
-    const down = (event: KeyboardEvent) => keys.current.add(event.code);
+    const isTyping = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    const down = (event: KeyboardEvent) => {
+      // 프로젝트 이름·메모를 입력하는 동안 카메라가 움직이지 않게 한다.
+      if (isTyping(event.target)) return;
+      keys.current.add(event.code);
+    };
     const up = (event: KeyboardEvent) => keys.current.delete(event.code);
+    // 키를 누른 채 Alt+Tab 등으로 창을 떠나면 keyup이 오지 않아 계속 걸어가므로 비운다.
+    const release = () => keys.current.clear();
+    const releaseWhenHidden = () => {
+      if (document.visibilityState === "hidden") release();
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", release);
+    document.addEventListener("visibilitychange", releaseWhenHidden);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+      document.removeEventListener("visibilitychange", releaseWhenHidden);
     };
   }, []);
 
