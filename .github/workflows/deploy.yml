@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+# main에 앱 코드가 바뀌면 빌드해서 GitHub Pages에 올린다.
+# 주소: https://jhpark-coder.github.io/Interior-Simulator/
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Interior-Simulator/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 진행 중인 배포는 끊지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: Interior-Simulator
+
+jobs:
+  build:
+    name: 빌드
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Interior-Simulator/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build
+        env:
+          VITE_BASE: /Interior-Simulator/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: Interior-Simulator/dist
+
+  deploy:
+    name: 배포
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
