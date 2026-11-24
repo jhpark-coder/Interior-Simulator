@@ -104,6 +104,25 @@
   font-weight: 700;
 }
 
+.sim-stale-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.75rem 1.5rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #f5c2c7;
+  border-radius: 12px;
+  background: #fff1f2;
+  color: #9f1239;
+  font-weight: 600;
+}
+
+.sim-stale-banner button {
+  flex: none;
+}
+
 .sim-scene-load-failed {
   align-content: center;
   gap: 0.5rem;

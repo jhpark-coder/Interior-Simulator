@@ -10,6 +10,7 @@ const db = vi.hoisted(() => ({
 vi.mock("../store/persistence/projectDb", () => db);
 
 const { claimLastProjectIfUnset, useAutoSave } = await import("./useAutoSave");
+const { resetTabSyncForTests } = await import("../store/persistence/tabSync");
 
 function deferred() {
   let resolve!: () => void;
@@ -44,6 +45,8 @@ describe("useAutoSave page lifecycle saves", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    // "바뀐 게 없으면 저장하지 않음" 기준이 앞 테스트의 저장 기록에 끌려가지 않게 비운다.
+    resetTabSyncForTests();
     db.saveProject.mockResolvedValue(undefined);
     db.loadProjectAsset.mockResolvedValue(undefined);
     visibility = "visible";
