@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { InteriorProject } from "../../domain/project";
+import { toSafeAssetBlob } from "./safeAssetBlob";
 
 const DATABASE_NAME = "interior-simulator";
 const DATABASE_VERSION = 1;
@@ -112,14 +113,15 @@ export async function saveProjectAsset(
     key: `${projectId}:${assetId}`,
     projectId,
     assetId,
-    blob,
+    blob: toSafeAssetBlob(blob),
   });
 }
 
 export async function loadProjectAsset(projectId: string, assetId: string): Promise<Blob | null> {
   const db = await database();
   const record = await db.get("assets", `${projectId}:${assetId}`);
-  return record?.blob ?? null;
+  // 이 검사가 생기기 전에 저장된 위험한 형식의 Blob도 꺼낼 때 막는다.
+  return record?.blob ? toSafeAssetBlob(record.blob) : null;
 }
 
 export async function deleteProjectAsset(projectId: string, assetId: string): Promise<void> {

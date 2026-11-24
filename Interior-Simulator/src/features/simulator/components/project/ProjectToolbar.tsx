@@ -8,6 +8,7 @@ import {
   saveProject,
   saveProjectAsset,
 } from "../../store/persistence/projectDb";
+import { toSafeAssetBlob } from "../../store/persistence/safeAssetBlob";
 import { saveActiveProjectBeforeTransition } from "../../store/persistence/projectTransition";
 import { MoreMenu } from "../shell/MoreMenu";
 import {
@@ -141,6 +142,22 @@ export function ProjectToolbar() {
     try {
       setStatus("프로젝트 읽는 중…");
       const imported = await readProjectPackage(await file.arrayBuffer());
+      // 같은 프로젝트가 이미 있으면, 백업이 그 위를 덮어쓴다는 걸 알리고 확인을 받는다.
+      // (예: 월요일 백업을 수요일에 열면 화·수요일 작업이 사라진다)
+      const existing = await loadProject(imported.project.id);
+      if (existing) {
+        const formatTime = (iso: string) => new Date(iso).toLocaleString("ko-KR");
+        const confirmed = window.confirm(
+          `이 백업은 이 브라우저에 있는 프로젝트 "${existing.name}"와 같은 프로젝트입니다.\n\n` +
+            `· 지금 저장된 내용: ${formatTime(existing.meta.updatedAt)}\n` +
+            `· 백업 파일 내용: ${formatTime(imported.project.meta.updatedAt)}\n\n` +
+            "백업 내용으로 덮어쓸까요? 덮어쓰면 지금 저장된 내용은 되돌릴 수 없습니다."
+        );
+        if (!confirmed) {
+          setStatus("가져오기를 취소했습니다");
+          return;
+        }
+      }
       setStatus("현재 프로젝트 저장 중…");
       await saveActiveProjectBeforeTransition();
       Object.values(projectObjectUrls).forEach((url) => URL.revokeObjectURL(url));
@@ -148,9 +165,10 @@ export function ProjectToolbar() {
       for (const asset of imported.project.assets) {
         const bytes = imported.assets.get(asset.id);
         if (!bytes) continue;
-        const blob = new Blob([bytesToArrayBuffer(bytes)], {
-          type: asset.mimeType,
-        });
+        // 백업 파일에 적힌 형식은 믿지 않는다. 실행될 수 있는 형식(HTML·SVG 등)은 막는다.
+        const blob = toSafeAssetBlob(
+          new Blob([bytesToArrayBuffer(bytes)], { type: asset.mimeType })
+        );
         await saveProjectAsset(imported.project.id, asset.id, blob);
         setObjectUrl(asset.id, URL.createObjectURL(blob));
       }
