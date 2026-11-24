@@ -28,21 +28,45 @@ type StructureScene3DProps = {
   showScenarioMaterials?: boolean;
 };
 
+function SceneLoadFailed() {
+  return (
+    <div className="sim-scene-loading sim-scene-load-failed" role="alert">
+      <p>3D 화면을 불러오지 못했습니다.</p>
+      <p className="sim-scene-load-failed-hint">
+        앱이 새 버전으로 업데이트됐거나 네트워크가 끊겼을 수 있습니다. 작업 내용은 자동
+        저장됩니다.
+      </p>
+      <button type="button" onClick={() => window.location.reload()}>
+        새로고침
+      </button>
+    </div>
+  );
+}
+
 function DeferredStructureScene3D(props: StructureScene3DProps) {
   const [Scene, setScene] =
     useState<ComponentType<StructureScene3DProps> | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void import("./scene3d/StructureScene3D").then((module) => {
-      if (active) setScene(() => module.StructureScene3D);
-    });
+    // 새 버전이 배포되면 예전 파일 이름의 3D 청크가 사라져, 열려 있던 탭에서는 불러오기가
+    // 실패한다. 실패를 처리하지 않으면 "준비하고 있습니다"에서 영원히 멈춘다.
+    import("./scene3d/StructureScene3D")
+      .then((module) => {
+        if (active) setScene(() => module.StructureScene3D);
+      })
+      .catch((error: unknown) => {
+        console.error("3D 화면 불러오기 실패", error);
+        if (active) setLoadFailed(true);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  return Scene ? <Scene {...props} /> : <SceneLoading />;
+  if (Scene) return <Scene {...props} />;
+  return loadFailed ? <SceneLoadFailed /> : <SceneLoading />;
 }
 
 export function SimulatorPage() {

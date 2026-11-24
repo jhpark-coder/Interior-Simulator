@@ -74,10 +74,18 @@ test("기록 핀·사진 추가·삭제와 패키지 왕복", async ({ page }) =
   await expect(canvasStatus(page)).toContainText("기록 0개");
   await expect.poll(async () => (await readStoredAssetIds(page, id)).length).toBe(0);
 
-  // 백업 파일 열기로 되돌린다.
+  // 백업 파일 열기로 되돌린다. 같은 프로젝트라 덮어쓰기 확인창이 뜨고, 확인을 누른다.
+  const overwriteDialog = new Promise<string>((resolve) => {
+    page.once("dialog", (dialog) => {
+      expect(dialog.type()).toBe("confirm");
+      resolve(dialog.message());
+      void dialog.accept();
+    });
+  });
   const chooserPromise = page.waitForEvent("filechooser");
   await (await openMoreMenu(page)).getByRole("button", { name: "백업 파일 열기" }).click();
   await (await chooserPromise).setFiles(packagePath);
+  expect(await overwriteDialog).toContain("백업 내용으로 덮어쓸까요?");
   await expect(page.locator(".project-save-state")).toHaveText("프로젝트 가져오기 완료");
   await expect(canvasStatus(page)).toContainText("기록 1개");
   const restoredPin = page.locator(".memory-list-item");

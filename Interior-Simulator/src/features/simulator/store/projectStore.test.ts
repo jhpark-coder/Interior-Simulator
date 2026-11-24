@@ -108,6 +108,47 @@ describe("projectSlice", () => {
     expect(state().structure.walls).toHaveLength(3);
   });
 
+  it("keeps unsaved structure edits when switching revisions back and forth", () => {
+    state().removeWall("rect-east");
+    const editedId = state().createStructureRevision("수정본");
+    // 리비전을 만든 뒤에도 계속 편집한다. 이 편집은 아직 저장 전이다.
+    state().removeWall("rect-west");
+    expect(state().structure.walls).toHaveLength(2);
+
+    state().restoreStructureRevision("revision-1");
+    expect(state().structure.walls).toHaveLength(4);
+    state().restoreStructureRevision(editedId);
+    expect(state().structure.walls).toHaveLength(2);
+  });
+
+  it("keeps unsaved structure edits when switching scenarios on different revisions", () => {
+    state().createStructureRevision("배치안 1 구조");
+    const secondId = state().createScenario("배치안 2");
+    state().restoreStructureRevision("revision-1");
+    // 배치안 2(revision-1)에서 벽을 지운 뒤 저장 전에 배치안을 오간다.
+    state().removeWall("rect-east");
+
+    state().switchScenario("scenario-1");
+    expect(state().structure.walls).toHaveLength(4);
+    state().switchScenario(secondId);
+    expect(state().structure.walls).toHaveLength(3);
+  });
+
+  it("does not bring furniture from the previous scenario back on undo", () => {
+    state().addFurniture("desk");
+    state().addFurniture("chair");
+    state().createScenario("빈 배치");
+    expect(state().historyPast).toHaveLength(0);
+    state().undo();
+    expect(state().furniture).toHaveLength(0);
+
+    state().switchScenario("scenario-1");
+    const copyId = state().duplicateScenario("scenario-1", "복사본");
+    expect(state().activeScenarioId).toBe(copyId);
+    state().undo();
+    expect(state().furniture).toHaveLength(2);
+  });
+
   it("does not delete the final scenario", () => {
     state().deleteScenario("scenario-1");
     expect(state().scenarios).toHaveLength(1);
