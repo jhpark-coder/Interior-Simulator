@@ -73,6 +73,23 @@ function syncScenarioFurniture(
   );
 }
 
+/**
+ * 편집 중인 구조를 현재 리비전에 써 넣은 리비전 목록을 돌려준다.
+ * 리비전·배치안을 바꾸기 전에 이걸 거치지 않으면, 마지막 저장 이후 고친 구조가
+ * 저장돼 있던 예전 구조로 덮여 사라진다. snapshotProject도 같은 규칙으로 저장한다.
+ */
+function syncActiveRevision(
+  revisions: StructureRevision[],
+  activeRevisionId: string,
+  structure: SimulatorState["structure"]
+): StructureRevision[] {
+  return revisions.map((revision) =>
+    revision.id === activeRevisionId
+      ? { ...revision, structure: structuredClone(structure) }
+      : revision
+  );
+}
+
 export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSliceState> = (
   set,
   get
@@ -201,9 +218,15 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
 
   restoreStructureRevision: (id) => {
     const state = get();
-    const revision = state.structureRevisions.find((item) => item.id === id);
+    const revisions = syncActiveRevision(
+      state.structureRevisions,
+      state.activeStructureRevisionId,
+      state.structure
+    );
+    const revision = revisions.find((item) => item.id === id);
     if (!revision) return;
     set({
+      structureRevisions: revisions,
       structure: structuredClone(revision.structure),
       structurePast: [],
       structureFuture: [],
@@ -249,6 +272,9 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       activeScenarioId: id,
       furniture: [],
       activeMaterials: [],
+      // 이전 배치안의 실행 취소 기록이 남으면 Ctrl+Z로 그 가구가 새 배치안에 들어온다.
+      historyPast: [],
+      historyFuture: [],
       selectedEntity: null,
     });
     return id;
@@ -289,6 +315,8 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       activeScenarioId: nextId,
       furniture: copy.furniture.map((item) => ({ ...item })),
       activeMaterials: copy.materials.map((item) => ({ ...item })),
+      historyPast: [],
+      historyFuture: [],
       selectedEntity: null,
     });
     return nextId;
@@ -305,11 +333,15 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
     );
     const target = scenarios.find((scenario) => scenario.id === id);
     if (!target) return;
-    const revision = state.structureRevisions.find(
-      (item) => item.id === target.structureRevisionId
+    const revisions = syncActiveRevision(
+      state.structureRevisions,
+      state.activeStructureRevisionId,
+      state.structure
     );
+    const revision = revisions.find((item) => item.id === target.structureRevisionId);
     set({
       scenarios,
+      structureRevisions: revisions,
       activeScenarioId: id,
       furniture: target.furniture.map((item) => ({ ...item })),
       activeMaterials: target.materials.map((item) => ({ ...item })),
@@ -347,11 +379,17 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
     const next = deletingActiveScenario
       ? remaining[0]
       : (remaining.find((scenario) => scenario.id === state.activeScenarioId) ?? remaining[0]);
+    const revisions = syncActiveRevision(
+      state.structureRevisions,
+      state.activeStructureRevisionId,
+      state.structure
+    );
     const nextRevision = deletingActiveScenario
-      ? state.structureRevisions.find((revision) => revision.id === next.structureRevisionId)
+      ? revisions.find((revision) => revision.id === next.structureRevisionId)
       : undefined;
     set({
       scenarios: remaining,
+      structureRevisions: revisions,
       activeScenarioId: next.id,
       furniture: next.furniture.map((item) => ({ ...item })),
       activeMaterials: next.materials.map((item) => ({ ...item })),
@@ -412,10 +450,10 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       state.furniture,
       state.activeMaterials
     );
-    const revisions = state.structureRevisions.map((revision) =>
-      revision.id === state.activeStructureRevisionId
-        ? { ...revision, structure: structuredClone(state.structure) }
-        : revision
+    const revisions = syncActiveRevision(
+      state.structureRevisions,
+      state.activeStructureRevisionId,
+      state.structure
     );
     return {
       version: "2.0.0",
