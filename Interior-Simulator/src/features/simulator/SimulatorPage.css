@@ -104,6 +104,21 @@
   font-weight: 700;
 }
 
+.sim-scene-load-failed {
+  align-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.sim-scene-load-failed p {
+  margin: 0;
+}
+
+.sim-scene-load-failed-hint {
+  max-width: 28rem;
+  font-weight: 400;
+}
+
 @media (max-width: 1100px) {
   .sim-body {
     grid-template-columns: 1fr;
