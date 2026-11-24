@@ -5,6 +5,7 @@ import type { MaterialAssignment, MaterialSurface } from "../../domain/scenario"
 import { createRectangleStructure, validateStructure } from "../../domain/structure";
 import { DEFAULT_ROOM } from "../../constants";
 import { createId } from "../createId";
+import { markProjectLoaded } from "../persistence/tabSync";
 import type { SimulatorState } from "../useSimulatorStore";
 
 function now(): string {
@@ -73,6 +74,16 @@ function syncScenarioFurniture(
   );
 }
 
+function revokeObjectUrls(urls: Record<string, string>): void {
+  for (const url of Object.values(urls)) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // 이미 놓아준 URL이거나 테스트 환경이면 무시한다.
+    }
+  }
+}
+
 /**
  * 편집 중인 구조를 현재 리비전에 써 넣은 리비전 목록을 돌려준다.
  * 리비전·배치안을 바꾸기 전에 이걸 거치지 않으면, 마지막 저장 이후 고친 구조가
@@ -125,6 +136,7 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
   setProjectName: (projectName) => set({ projectName }),
 
   createNewProject: (name) => {
+    revokeObjectUrls(get().floorPlanObjectUrls);
     const timestamp = now();
     const projectId = createId();
     const revisionId = createId();
@@ -173,6 +185,10 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       detectionCandidates: [],
       detectionError: null,
       selectedDetectionCandidateId: null,
+      // 이전 프로젝트의 구조 경고와 배치 중이던 가구가 새 프로젝트에 남지 않게 한다.
+      structureIssues: validateStructure(structure),
+      pendingFurniture: null,
+      placingFurnitureId: null,
       structurePast: [],
       structureFuture: [],
       historyPast: [],
@@ -475,6 +491,9 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
   },
 
   importProject: (project) => {
+    // 이전 프로젝트의 평면도·사진 Object URL을 놓아준다. 호출하는 쪽마다 따로 정리하면
+    // 빠뜨리는 경로(구형 JSON 가져오기 등)에서 Blob이 페이지를 닫을 때까지 메모리에 남는다.
+    revokeObjectUrls(get().floorPlanObjectUrls);
     const revision =
       project.structureRevisions.find((item) => item.id === project.activeStructureRevisionId) ??
       project.structureRevisions[0];
@@ -501,6 +520,13 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       savedViewpoints: structuredClone(project.savedViewpoints),
       selectedMemoryPinId: null,
       activeViewpointId: null,
+      // 다른 프로젝트에서 진행하던 자동 인식 결과와 배치 중이던 가구를 버린다.
+      detectionStatus: "idle",
+      detectionCandidates: [],
+      detectionError: null,
+      selectedDetectionCandidateId: null,
+      pendingFurniture: null,
+      placingFurnitureId: null,
       structurePast: [],
       structureFuture: [],
       historyPast: [],
@@ -508,5 +534,8 @@ export const createProjectSlice: StateCreator<SimulatorState, [], [], ProjectSli
       selectedEntity: null,
       selectedStructureEntity: null,
     });
+    // 방금 불러온 상태를 "저장된 상태"로 기억한다. 바뀐 게 없으면 자동 저장하지 않고,
+    // 다른 탭이 더 최신이라던 표시도 이 탭이 새로 불러왔으니 풀린다.
+    markProjectLoaded(get().snapshotProject());
   },
 });
