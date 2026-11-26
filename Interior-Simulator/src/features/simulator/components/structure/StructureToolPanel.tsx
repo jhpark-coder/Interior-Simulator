@@ -63,6 +63,8 @@ export function StructureToolPanel() {
     (state) => state.clearCalibration
   );
   const clearStructure = useSimulatorStore((state) => state.clearStructure);
+  const wallCount = useSimulatorStore((state) => state.structure.walls.length);
+  const openingCount = useSimulatorStore((state) => state.structure.openings.length);
   const setStructure = useSimulatorStore((state) => state.setStructure);
   const projectId = useSimulatorStore((state) => state.projectId);
   const registerAsset = useSimulatorStore(
@@ -533,14 +535,27 @@ export function StructureToolPanel() {
             </button>
           ))}
         </div>
-        <button
-          onClick={() => {
-            clearStructure();
-            setTool("wall");
-          }}
-        >
-          빈 구조에서 시작
-        </button>
+        <div className="structure-inline-actions">
+          <button
+            onClick={() => {
+              // 그린 벽이 있으면 한 번 묻는다. 지운 뒤에도 실행 취소로 되돌릴 수 있다.
+              // 이미 비어 있으면 지우지 않아 실행 취소 기록이 헛돌지 않는다.
+              if (wallCount > 0) {
+                const confirmed = window.confirm(
+                  `그린 벽 ${wallCount}개${
+                    openingCount > 0 ? `와 문·창문·통로 ${openingCount}개` : ""
+                  }를 모두 지우고 빈 구조에서 시작할까요?\n` +
+                    "실행 취소(Ctrl/Cmd + Z)로 되돌릴 수 있습니다."
+                );
+                if (!confirmed) return;
+                clearStructure();
+              }
+              setTool("wall");
+            }}
+          >
+            빈 구조에서 시작
+          </button>
+        </div>
       </section>
 
       {activeSource && (

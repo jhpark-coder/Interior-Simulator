@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { canvasStatus, loadSample, openApp, step, structureTool } from "./helpers";
+import {
+  canvasStatus,
+  loadSample,
+  openApp,
+  startEmptyStructure,
+  step,
+  structureTool,
+} from "./helpers";
 
 async function addSingleBed(page: Page) {
   await page.getByRole("button", { name: /^싱글 침대/ }).first().click();
@@ -73,7 +80,7 @@ test("구조를 바꾼 뒤 벽 밖이 된 가구를 배치 검토에 모은다",
 
   // 구조를 비우면 침대는 집 구조 바깥이 된다.
   await step(page, "집 구조").click();
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await step(page, "가구 배치").click();
   const review = page.getByRole("region", { name: "배치 검토" });
   await expect(review).toBeVisible();

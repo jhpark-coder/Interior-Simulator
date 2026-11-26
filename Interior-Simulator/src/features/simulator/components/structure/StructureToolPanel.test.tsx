@@ -1,7 +1,9 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useSimulatorStore } from "../../store/useSimulatorStore";
+import { createRectangularStructureFixture } from "../../domain/structure";
+import { defaultOpeningForTool } from "../../editor2d/openingDefaults";
 
 vi.mock("../../floorplan/pdf", () => ({ renderPdfFloorPlanPage: vi.fn() }));
 vi.mock("../../floorplan/detectionClient", () => ({
@@ -106,6 +108,57 @@ describe("StructureToolPanel", () => {
     await waitFor(() =>
       expect(detection.analyzeFloorPlanImage).toHaveBeenCalledWith("blob:apt", expect.anything(), crop)
     );
+  });
+
+  describe("빈 구조에서 시작", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    function useRectangle() {
+      useSimulatorStore.getState().setStructure(createRectangularStructureFixture(), false);
+      useSimulatorStore.getState().setStructureTool("select");
+    }
+
+    it("asks before clearing drawn walls and keeps them when cancelled", () => {
+      useRectangle();
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      render(<StructureToolPanel />);
+      fireEvent.click(screen.getByRole("button", { name: "빈 구조에서 시작" }));
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(confirm.mock.calls[0][0]).toContain("그린 벽 4개를 모두 지우고");
+      expect(useSimulatorStore.getState().structure.walls).toHaveLength(4);
+      expect(useSimulatorStore.getState().structureTool).toBe("select");
+    });
+
+    it("clears walls and openings once confirmed, and the clear can be undone", () => {
+      useRectangle();
+      const wall = useSimulatorStore.getState().structure.walls[0];
+      useSimulatorStore
+        .getState()
+        .addStructureOpening({ ...defaultOpeningForTool("door"), wallId: wall.id, offset: 500 });
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+      render(<StructureToolPanel />);
+      fireEvent.click(screen.getByRole("button", { name: "빈 구조에서 시작" }));
+      expect(confirm.mock.calls[0][0]).toContain("그린 벽 4개와 문·창문·통로 1개를 모두 지우고");
+      expect(useSimulatorStore.getState().structure.walls).toHaveLength(0);
+      expect(useSimulatorStore.getState().structure.openings).toHaveLength(0);
+      expect(useSimulatorStore.getState().structureTool).toBe("wall");
+
+      useSimulatorStore.getState().undoStructure();
+      expect(useSimulatorStore.getState().structure.walls).toHaveLength(4);
+      expect(useSimulatorStore.getState().structure.openings).toHaveLength(1);
+    });
+
+    it("does not ask or add an undo step when there is nothing to clear", () => {
+      useRectangle();
+      useSimulatorStore.getState().clearStructure();
+      const historyLength = useSimulatorStore.getState().structurePast.length;
+      const confirm = vi.spyOn(window, "confirm");
+      render(<StructureToolPanel />);
+      fireEvent.click(screen.getByRole("button", { name: "빈 구조에서 시작" }));
+      expect(confirm).not.toHaveBeenCalled();
+      expect(useSimulatorStore.getState().structureTool).toBe("wall");
+      expect(useSimulatorStore.getState().structurePast).toHaveLength(historyLength);
+    });
   });
 
   it("keeps sample structures behind a collapsed section", () => {

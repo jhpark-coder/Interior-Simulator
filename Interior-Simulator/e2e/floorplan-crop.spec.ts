@@ -5,6 +5,7 @@ import {
   floorPlanClicker,
   openApp,
   readLastStoredProject,
+  startEmptyStructure,
   waitForStoredProject,
 } from "./helpers";
 
@@ -49,7 +50,7 @@ function zoomPercent(text: string | null): number {
 test("평면도를 잘라 보이는 영역을 정하고 저장·해제한다", async ({ page }) => {
   await openApp(page);
   await page.getByRole("textbox", { name: "프로젝트 이름" }).fill("자르기 테스트");
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await page
     .locator('input[type="file"][accept="image/jpeg,image/png,application/pdf"]')
     .setInputFiles({

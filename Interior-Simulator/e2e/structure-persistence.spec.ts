@@ -7,6 +7,7 @@ import {
   floorPlanClicker,
   openApp,
   readStoredAssetIds,
+  startEmptyStructure,
   structureTool,
   waitForStoredProject,
 } from "./helpers";
@@ -17,7 +18,7 @@ test("평면도 가져오기 → 축척 → 구조 편집 → 저장 → 재열�
   await openApp(page);
   await page.getByRole("textbox", { name: "프로젝트 이름" }).fill("E2E 평면도");
   // 기본 방(벽 4개) 없이 평면도만 따라 그리도록 구조를 비운다.
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await expect(canvasStatus(page)).toContainText("벽 0개");
 
   // ① 평면도 불러오기

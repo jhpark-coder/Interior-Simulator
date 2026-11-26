@@ -3,6 +3,7 @@ import {
   activeStructure,
   canvasStatus,
   openApp,
+  startEmptyStructure,
   step,
   structureTool,
   waitForStoredProject,
@@ -23,7 +24,7 @@ async function zoomLabel(page: Page) {
 }
 
 async function drawRectangleRoom(page: Page) {
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await expect(canvasStatus(page)).toContainText("벽 0개");
   const zoomBefore = await zoomLabel(page);
   const canvas = page.locator(".structure-canvas");
