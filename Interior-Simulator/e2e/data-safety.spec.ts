@@ -4,11 +4,13 @@ import {
   canvasStatus,
   openApp,
   readLastStoredProject,
+  startEmptyStructure,
+  structureTool,
   waitForStoredProject,
 } from "./helpers";
 
 async function drawOneWall(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   const canvas = page.locator(".structure-canvas");
   await canvas.click({ position: { x: 200, y: 300 } });
   await canvas.click({ position: { x: 600, y: 300 } });
@@ -98,4 +100,43 @@ test("이전 버전이 범위 밖 값으로 저장한 프로젝트도 고쳐서 
     "예전 저장본(두께 0)"
   );
   await expect(canvasStatus(reopened)).toContainText("벽 1개");
+});
+
+test("빈 구조에서 시작은 그린 벽이 있을 때만 확인하고, 실행 취소로 되돌린다", async ({ page }) => {
+  await openApp(page);
+  const status = canvasStatus(page);
+  const wallCount = Number((await status.textContent())?.match(/벽 (\d+)개/)?.[1]);
+  expect(wallCount).toBeGreaterThan(0);
+  const button = page.getByRole("button", { name: "빈 구조에서 시작" });
+
+  // 취소하면 아무것도 지우지 않는다.
+  const messages: string[] = [];
+  page.once("dialog", (dialog) => {
+    messages.push(`${dialog.type()}: ${dialog.message()}`);
+    void dialog.dismiss();
+  });
+  await button.click();
+  await expect.poll(() => messages.length).toBe(1);
+  expect(messages[0]).toContain(`confirm: 그린 벽 ${wallCount}개를 모두 지우고`);
+  await expect(status).toContainText(`벽 ${wallCount}개`);
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  await button.click();
+  await expect(status).toContainText("벽 0개");
+  await expect(structureTool(page, "벽")).toHaveClass(/active/);
+
+  // 이미 비어 있으면 묻지 않고, 실행 취소 기록도 늘리지 않는다.
+  const unexpected = (dialog: import("@playwright/test").Dialog) => {
+    messages.push(dialog.message());
+    void dialog.dismiss();
+  };
+  page.on("dialog", unexpected);
+  await button.click();
+  await expect(status).toContainText("벽 0개");
+  page.off("dialog", unexpected);
+  expect(messages).toHaveLength(1);
+
+  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(status).toContainText(`벽 ${wallCount}개`);
 });

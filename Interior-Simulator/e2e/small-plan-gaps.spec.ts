@@ -6,6 +6,7 @@ import {
   loadSample,
   openApp,
   readLastStoredProject,
+  startEmptyStructure,
   step,
   structureTool,
   waitForStoredProject,
@@ -29,7 +30,7 @@ function length(wall: StoredWall): number {
 test("통로 도구, 벽 길이 직접 입력, 벽 일괄 변경", async ({ page }) => {
   await openApp(page);
   await page.getByRole("textbox", { name: "프로젝트 이름" }).fill("작은 기능");
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   const canvas = page.locator(".structure-canvas");
   await canvas.click({ position: { x: 200, y: 300 } });
   await canvas.click({ position: { x: 600, y: 300 } });
@@ -83,7 +84,7 @@ test("통로 도구, 벽 길이 직접 입력, 벽 일괄 변경", async ({ page
 test("평면도 밝기·대비·흑백 보정을 저장하고 다시 연다", async ({ page }) => {
   await openApp(page);
   await page.getByRole("textbox", { name: "프로젝트 이름" }).fill("평면도 보정");
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await page
     .locator('input[type="file"][accept="image/jpeg,image/png,application/pdf"]')
     .setInputFiles({

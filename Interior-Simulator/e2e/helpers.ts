@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Dialog, type Locator, type Page } from "@playwright/test";
 
 const LAST_PROJECT_KEY = "interior-simulator-last-project";
 const DATABASE_NAME = "interior-simulator";
@@ -58,6 +58,21 @@ export function structureTool(
   label: "선택" | "이동" | "벽" | "문" | "창문" | "통로" | "축척"
 ): Locator {
   return page.locator(`.structure-tool[title="${label}"]`);
+}
+
+/**
+ * 집 구조 단계에서 `빈 구조에서 시작`을 누른다. 그린 벽이 있으면 뜨는 확인 창을 수락하고,
+ * 다른 테스트의 prompt 처리와 섞이지 않도록 클릭이 끝나면 수락 처리를 뗀다.
+ */
+export async function startEmptyStructure(page: Page) {
+  const accept = (dialog: Dialog) => void dialog.accept();
+  page.on("dialog", accept);
+  try {
+    await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+    await expect(canvasStatus(page)).toContainText("벽 0개");
+  } finally {
+    page.off("dialog", accept);
+  }
 }
 
 export async function loadSample(page: Page, name: RegExp) {

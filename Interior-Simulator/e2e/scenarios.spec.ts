@@ -5,6 +5,7 @@ import {
   loadSample,
   openApp,
   openMoreMenu,
+  startEmptyStructure,
   step,
   waitForStoredProject,
 } from "./helpers";
@@ -73,7 +74,7 @@ test("배치안 생성·복제·전환·삭제와 구조 리비전 복원", asyn
   await expect(activeScenario(page).locator("option:checked")).toHaveText("배치안 2");
   await expect(canvasStatus(page)).toContainText("가구 0개");
   await step(page, "집 구조").click();
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   await expect(canvasStatus(page)).toContainText("벽 0개");
   const canvas = page.locator(".structure-canvas");
   await canvas.click({ position: { x: 300, y: 300 } });

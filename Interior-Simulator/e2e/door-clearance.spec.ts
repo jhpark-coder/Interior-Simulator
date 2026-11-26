@@ -3,6 +3,7 @@ import {
   activeStructure,
   canvasStatus,
   openApp,
+  startEmptyStructure,
   step,
   structureTool,
   waitForStoredProject,
@@ -16,7 +17,7 @@ async function setPendingField(page: Page, label: string, value: number) {
 
 test("문 열림 범위를 막는 가구를 배치 검토에 알리고, 옮기면 사라진다", async ({ page }) => {
   await openApp(page);
-  await page.getByRole("button", { name: "빈 구조에서 시작" }).click();
+  await startEmptyStructure(page);
   const canvas = page.locator(".structure-canvas");
   for (const [x, y] of [
     [200, 200],
