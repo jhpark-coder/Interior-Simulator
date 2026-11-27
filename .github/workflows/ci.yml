@@ -1,19 +1,23 @@
 name: CI
 
 # 앱은 저장소의 Interior-Simulator/ 아래에 있다. 계획 문서만 바뀐 커밋에서는 돌지 않는다.
+# main에서는 검사가 모두 통과한 뒤에만 GitHub Pages에 배포한다(맨 아래 deploy job).
 on:
   push:
     branches: [main]
     paths:
       - "Interior-Simulator/**"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
   pull_request:
     paths:
       - "Interior-Simulator/**"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
-# PR에 새 커밋이 오면 이전 실행을 취소한다. main은 커밋마다 끝까지 돈다.
+# PR에 새 커밋이 오면 이전 실행을 취소한다. main은 실행 중인 것을 끊지 않고 한 번에 하나씩
+# 돌아, 배포 순서가 커밋 순서와 같다. 대기 중인 실행은 더 새 커밋이 오면 그것으로 바뀐다.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -73,3 +77,15 @@ jobs:
             Interior-Simulator/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # lint·단위 테스트·빌드와 E2E가 모두 통과해야 배포한다. PR과 다른 브랜치에서는 건너뛴다.
+  # 다시 배포할 때는 Actions에서 main을 골라 이 워크플로를 수동 실행한다(검사부터 다시 돈다).
+  deploy:
+    name: 배포
+    needs: [check, e2e]
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy.yml

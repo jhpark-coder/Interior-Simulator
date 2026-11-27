@@ -121,6 +121,10 @@ CI는 저장소 루트의 `.github/workflows/ci.yml`이다. `main` 푸시와 PR�
 등)는 로컬에서 통과해도 CI 빌드에서 실패한다. CI에서는 Playwright가 실패한 테스트를 한 번
 재시도한다.
 
+GitHub Pages 배포(`.github/workflows/deploy.yml`)는 혼자 돌지 않는다. `main`의 CI에서 두 job이 모두
+통과하면 `ci.yml`의 `deploy` job이 이를 불러 `VITE_BASE=/Interior-Simulator/`로 빌드해 올린다. 다시
+배포하려면 Actions에서 main으로 CI를 수동 실행한다(검사부터 다시 돈다).
+
 ## Documentation
 
 - 사용자 실행과 현재 기능: `README.md`

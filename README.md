@@ -4,7 +4,7 @@
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-바로_써_보기-c2542c?style=flat-square)](https://jhpark-coder.github.io/Interior-Simulator/)
 [![CI](https://github.com/jhpark-coder/Interior-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/jhpark-coder/Interior-Simulator/actions/workflows/ci.yml)
-[![Deploy](https://github.com/jhpark-coder/Interior-Simulator/actions/workflows/deploy.yml/badge.svg)](https://github.com/jhpark-coder/Interior-Simulator/actions/workflows/deploy.yml)
+[![Deploy](https://img.shields.io/github/deployments/jhpark-coder/Interior-Simulator/github-pages?label=Deploy&style=flat-square)](https://github.com/jhpark-coder/Interior-Simulator/deployments/github-pages)
 
 👉 **https://jhpark-coder.github.io/Interior-Simulator/**
 설치 없이 브라우저에서 바로 써 볼 수 있습니다. `집 구조` 단계의 **샘플 구조 → 84㎡ 방 3개 아파트**를 누르면 예시 집이 열립니다.
@@ -47,10 +47,10 @@
 
 ## 테스트와 배포
 
-- 단위·컴포넌트 테스트 **301개** (Vitest, 42개 파일)
+- 단위·컴포넌트 테스트 **315개** (Vitest, 44개 파일)
 - E2E 테스트 (Playwright, 저장·복원·배치안·문 열림 방해 등 사용자 시나리오)
 - `main` 푸시와 PR마다 GitHub Actions가 lint → 단위 테스트 → 빌드 → E2E를 실행합니다.
-- `main`에 앱 코드가 합쳐지면 별도 워크플로가 빌드해 GitHub Pages에 자동 배포합니다.
+- `main`에 앱 코드가 합쳐지면 위 검사가 **모두 통과한 뒤에만** 빌드해 GitHub Pages에 자동 배포합니다. 하나라도 실패하면 배포하지 않고 이전 버전이 그대로 남습니다.
 
 ## 로컬에서 실행
 
