@@ -93,6 +93,8 @@ Chromium 경로를 지정합니다.
 GitHub Actions(`.github/workflows/ci.yml`)가 `main` 푸시와 PR마다 `npm ci --legacy-peer-deps`로
 새로 설치한 뒤 lint·단위 테스트·빌드와 E2E를 실행합니다. E2E가 실패하면 실행 화면의
 `playwright-report` 아티팩트에서 보고서·스크린샷·trace를 내려받을 수 있습니다.
+`main`에서는 이 검사가 모두 통과한 뒤에만 GitHub Pages
+(https://jhpark-coder.github.io/Interior-Simulator/)에 배포합니다.
 
 ## 사용 순서
 

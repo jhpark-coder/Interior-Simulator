@@ -1,24 +1,10 @@
 name: Deploy to GitHub Pages
 
-# main에 앱 코드가 바뀌면 빌드해서 GitHub Pages에 올린다.
-# 주소: https://jhpark-coder.github.io/Interior-Simulator/
+# 빌드해서 GitHub Pages에 올린다. 주소: https://jhpark-coder.github.io/Interior-Simulator/
+# 혼자 돌지 않고 ci.yml의 deploy job이 검사가 모두 통과한 뒤에 부른다.
+# 권한(pages: write, id-token: write)은 부르는 job이 준다.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "Interior-Simulator/**"
-      - ".github/workflows/deploy.yml"
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 배포는 한 번에 하나만. 진행 중인 배포는 끊지 않는다.
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  workflow_call:
 
 defaults:
   run:
@@ -28,6 +14,8 @@ jobs:
   build:
     name: 빌드
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -47,9 +35,16 @@ jobs:
           path: Interior-Simulator/dist
 
   deploy:
-    name: 배포
+    name: Pages에 올리기
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    # 배포는 한 번에 하나만. 진행 중인 배포는 끊지 않는다.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
